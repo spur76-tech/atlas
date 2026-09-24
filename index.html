@@ -1,5 +1,47 @@
-<!doctype html><html data-theme="dark"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#0a0e17;color:#e2ecf1}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>인체 아틀라스 3D</title>
+<!doctype html><html data-theme="dark"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#0a0e17;color:#e2ecf1}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+.realistic-note{position:absolute;left:16px;top:54px;z-index:4;padding:8px 12px;border-radius:12px;background:rgba(10,14,20,.78);color:#f4f4f4;font-size:12px;backdrop-filter:blur(8px);box-shadow:0 6px 22px rgba(0,0,0,.22);pointer-events:none}
+#realElbow[aria-pressed="true"]{box-shadow:0 0 0 2px rgba(214,67,57,.25),0 8px 24px rgba(214,67,57,.22)}
+.joint-panel{position:absolute;left:16px;bottom:18px;z-index:5;width:290px;padding:12px 14px;border-radius:14px;background:rgba(12,16,22,.86);color:#fff;backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,.25);font-size:12px;display:none}
+.joint-panel.on{display:block}
+.joint-row{display:flex;align-items:center;gap:10px;margin:7px 0}
+.joint-row b{font-size:13px}
+.joint-angle{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:13px}
+.joint-panel input[type=range]{width:100%;accent-color:#d64339}
+.joint-btns{display:flex;gap:7px;margin-top:8px}
+.joint-btns button{flex:1;border:0;border-radius:9px;padding:7px 8px;background:#fff;color:#182027;cursor:pointer;font-weight:600}
+.joint-hint{opacity:.72;margin-top:7px;line-height:1.35}
+
+
+<style>
+/* Anatomy 3D · HOE 밝은 의료 아틀라스 테마 */
+:root{
+  --bg:#edf6fb; --surface:#ffffff; --surface2:#eef7fc; --glass:rgba(255,255,255,.88);
+  --ink:#102c49; --ink2:#46647b; --ink3:#7890a3; --line:#cfe0eb; --line2:#aec9d9;
+  --accent:#118fc4; --accent-soft:#d9f0fb;
+  --sky0:#fbfdff; --sky1:#eaf5fb; --sky2:#d7eaf4;
+  --shadow:0 2px 8px rgba(35,82,111,.10),0 18px 42px -20px rgba(35,82,111,.24);
+  --hoe-font:"Cinzel", "Times New Roman", serif;
+}
+html[data-theme="dark"]{color-scheme:light}
+body{background:linear-gradient(135deg,#f8fcff 0%,#eaf5fb 52%,#dceef7 100%);color:var(--ink)}
+.top2{background:rgba(255,255,255,.82)!important;border-bottom:1px solid #d5e5ef!important;box-shadow:0 5px 22px rgba(45,100,132,.08)}
+.brand2 h1{font-family:var(--hoe-font)!important;font-weight:700!important;letter-spacing:.015em!important;background:linear-gradient(90deg,#123b63,#148fc5 55%,#3b5ce0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand2 .sub2{color:#628097!important;letter-spacing:.02em}
+.logo2{filter:drop-shadow(0 4px 7px rgba(18,143,196,.18))}
+.devcredit{display:none!important}
+.hoe-credit{display:flex;align-items:center;gap:7px;margin-left:8px;padding:3px 2px}
+.hoe-mark{font-family:var(--hoe-font);font-size:25px;font-weight:800;letter-spacing:.055em;font-style:italic;background:linear-gradient(110deg,#2837cf,#149fd2 70%,#6b4ce6);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 2px 8px rgba(51,81,210,.12)}
+.hoe-role{font-family:var(--sans);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#6b8193;margin-top:11px}
+.sidebar,.rightpanel,.card,.side-card{box-shadow:var(--shadow)!important}
+.stagewrap{background:linear-gradient(145deg,#fafdff 0%,#e8f4fa 55%,#d8ebf5 100%)!important;border-color:#cbdfea!important;box-shadow:inset 0 0 60px rgba(255,255,255,.65),0 18px 40px rgba(37,88,119,.12)!important}
+.realistic-note,.joint-panel{background:rgba(255,255,255,.90)!important;color:#17364e!important;border:1px solid #cfe2ee!important;box-shadow:0 10px 28px rgba(39,93,124,.12)!important}
+.tool2,.hud,.glbpill{background:rgba(255,255,255,.88)!important;border-color:#cfe0eb!important}
+.topnav{background:#eef7fc!important;border-color:#cfe0eb!important}
+.topnav button[aria-pressed="true"],.gender2 button[aria-pressed="true"]{background:#118fc4!important}
+.joint-panel input[type=range]{accent-color:#118fc4!important}
+</style>
+</head><body>
+<title>Anatomy 3D</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@600;700&display=swap">
@@ -9,7 +51,7 @@
   --ink:#122029; --ink2:#526672; --ink3:#7d919e;
   --line:#d2dce1; --line2:#bccad2;
   --accent:#0d6b70; --accent-soft:#d3eaea;
-  --sky0:#f8f8f9; --sky1:#eef0f2; --sky2:#dde2e6;
+  --sky0:#ffffff; --sky1:#edf7fc; --sky2:#d9edf7;
   --c-skeletal:#9a8348; --c-muscular:#a9423a; --c-digestive:#b3722c;
   --c-respiratory:#31739c; --c-circulatory:#96222f; --c-nervous:#61509a;
   --c-urinary:#27745b; --c-reproductive:#9c3d71;
@@ -301,8 +343,8 @@ footer .mono{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em}
   <div class="brand2">
     <span class="logo2">🦴</span>
     <div>
-      <h1>인체 아틀라스 3D</h1>
-      <p class="sub2">Human Anatomy Atlas 3D</p>
+      <h1>Anatomy 3D</h1>
+      <p class="sub2">3D Human Anatomy · Explore · Learn · Understand</p>
     </div>
   </div>
   <nav class="topnav" id="topnav">
@@ -316,7 +358,7 @@ footer .mono{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em}
       <button id="sexM" aria-pressed="true">🧍‍♂️ 남성</button>
       <button id="sexF" aria-pressed="false">🧍‍♀️ 여성</button>
     </div>
-    <p class="devcredit">개발자 : I.H KIM</p>
+    <div class="hoe-credit"><span class="hoe-mark">HOE</span><span class="hoe-role">Developer</span></div>
   </div>
 </header>
 
@@ -342,15 +384,24 @@ footer .mono{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em}
     <div class="stagewrap" id="stagewrap">
       <canvas id="gl"></canvas>
       <div class="loading" id="loading">MODELING&nbsp;&nbsp;·&nbsp;&nbsp;잠시만요</div>
-      <div class="viewnote" id="viewnote">남성 · 뼈대계통</div>
-      <div class="tool2">
-        <button data-view="front">▮<span>앞면</span></button>
+      <div class="viewnote" id="viewnote">실제 상지 해부 모델</div><div class="realistic-note" id="realisticNote">실제 상지 GLB · 이두근/삼두근 · 팔꿈치 굴곡 데모</div>
+      <div class="joint-panel" id="jointPanel">
+        <div class="joint-row"><b>팔꿈치 관절 움직임</b><span class="joint-angle" id="jointAngle">0°</span></div>
+        <input id="jointSlider" type="range" min="0" max="120" value="0" step="1" aria-label="팔꿈치 굴곡 각도">
+        <div class="joint-btns">
+          <button id="jointPlay">▶ 자동 움직임</button>
+          <button id="jointReset">↺ 0°</button>
+        </div>
+        <div class="joint-hint">슬라이더를 움직이면 실제 상지 GLB의 전완부가 팔꿈치를 중심으로 굴곡·신전합니다.</div>
+      </div>
+      <div class="tool2">        <button data-view="front">▮<span>앞면</span></button>
         <button data-view="back">▯<span>뒤면</span></button>
         <button data-view="left">◀<span>왼쪽</span></button>
         <button data-view="right">▶<span>오른쪽</span></button>
         <button data-view="top">▲<span>위쪽</span></button>
         <button id="reset2">⟲<span>전체 보기</span></button>
         <button id="spin2" aria-pressed="false">↻<span>자동 회전</span></button>
+        <button id="realElbow" aria-pressed="false">💪<span>실제 팔꿈치</span></button>
       </div>
     </div>
     <p class="draghint">↺ 드래그하여 회전하세요 ↻</p>
@@ -404,7 +455,7 @@ footer .mono{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em}
     <p><b>변경 사항</b> 웹에서 빠르게 보이도록 원본 모델을 가공했습니다. 압축 방식을 다시 적용했고, 텍스처(노멀맵)와 일부 구조(근막·윤활주머니·인대·관절주머니 등)를 뺐습니다. 또한 분류별 색을 바꾸고, 오른쪽 모델을 좌우 대칭으로 복제했으며, 우리말 명칭을 덧붙였습니다.</p>
     <p><b>동일조건 변경허락</b> 이 페이지에 들어 있는 가공된 해부 모델은 원 라이선스와 같은 <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ko" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a> 조건으로 배포합니다. 누구나 같은 조건과 출처 표시를 지키면 복제·배포·수정할 수 있습니다.</p>
     <p><b>원천 자료</b> Open3DModel은 이전 모델인 BodyParts3D(© 라이프사이언스 통합데이터베이스센터 DBCLS, CC BY-SA 2.1 JP)와 Z-Anatomy를 바탕으로 만들어졌습니다.</p>
-    <p><b>보증 없음</b> 원 제작자와 소속 기관은 이 페이지를 보증하거나 후원하지 않습니다. 모델은 교육용이며 원 라이선스에 따라 어떠한 보증도 없이 제공됩니다.</p>
+    <p><b>보증 없음</b> 원 제작자와 소속 기관은 이 페이지를 보증하거나 후원하지 않습니다. 모델은 교육용이며 원 라이선스에 따라 어떠한 보증도 없이 제공됩니다. 팔꿈치 움직임은 실제 상지 GLB를 이용한 시각화 데모이며, 임상용 생체역학 시뮬레이터가 아닙니다.</p>
     <p><b>그 밖의 요소</b> 호흡·소화·비뇨·생식계통의 모식 모형, 동작모드, 화면 구성과 코드는 개발자 I.H KIM이 만들었습니다. 사용한 소프트웨어: <a href="https://threejs.org/" target="_blank" rel="noopener noreferrer">three.js</a> (MIT 라이선스), <a href="https://github.com/google/draco" target="_blank" rel="noopener noreferrer">Draco</a> 디코더 (Apache License 2.0).</p>
   </section>
     <p class="mono">8 SYSTEMS · MALE &amp; FEMALE · WEBGL</p>
@@ -837,7 +888,7 @@ function mat(key,color,opt){
   MATS[key]=m; return m;
 }
 const PAL={
- bone:"#e7dcc4", boneDeep:"#d3c6a9",
+ bone:"#f1e5cf", boneDeep:"#cdbb9d",
  muscle:"#b5706f", muscleDeep:"#9c5b5c", tendon:"#eee8da",
  nerve:"#b0a0dd", brain:"#c1aed2", cord:"#ddd0ee",
  artery:"#b2303c", vein:"#4a6aa8", heart:"#a13540",
@@ -1755,6 +1806,9 @@ function buildRealView(id){
             const sid=p.ctx?null:registerStruct(name,cat,regionOf(group,p.f,name));
             const m=new T.Mesh(o.geometry,p.ctx?ctxMat:matFor(sid,o.material,cat,p.f));
             m.matrixAutoUpdate=false; m.matrix.copy(o.matrixWorld); if(mirror) m.matrix.premultiply(MIRROR);
+            m.userData.anatomyName=name;
+            m.userData.anatomyGroup=group;
+            m.userData.anatomyFile=p.f;
             m.castShadow=!p.ctx; m.receiveShadow=false;
             if(p.ctx){ m.userData.ctx=true; m.renderOrder=-1; }
             else { m.userData.id=sid; ids.add(sid); }
@@ -1945,7 +1999,7 @@ const renderer=new T.WebGLRenderer({canvas:canvas,antialias:true,alpha:false,pow
 renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
 renderer.outputEncoding=T.sRGBEncoding;
 renderer.toneMapping=T.ACESFilmicToneMapping;
-renderer.toneMappingExposure=0.94;
+renderer.toneMappingExposure=1.18;
 renderer.shadowMap.enabled=true; renderer.shadowMap.type=T.PCFSoftShadowMap;
 renderer.localClippingEnabled=true;
 
@@ -1969,7 +2023,7 @@ function applyTheme(){
   const dark=(c2.length&&parseInt(c2.replace("#",""),16)<0x808080);
   shellMat.uniforms.uOp.value=dark?.040:.055;
   shellMat.uniforms.uRim.value=dark?.50:.40;
-  renderer.toneMappingExposure=dark?1.10:1.00;
+  renderer.toneMappingExposure=dark?1.22:1.18;
   if(envRT) envRT.dispose();
   const pm=new T.PMREMGenerator(renderer); pm.compileEquirectangularShader();
   const es=new T.Scene();
@@ -1982,15 +2036,15 @@ function applyTheme(){
   scene.environment=envRT.texture;
   pm.dispose();
 }
-const key=new T.DirectionalLight(0xfff6ee,1.05); key.position.set(6,15,12);
+const key=new T.DirectionalLight(0xffffff,1.45); key.position.set(6,15,12);
 key.castShadow=true; key.shadow.mapSize.set(2048,2048);
 const sc=key.shadow.camera; sc.left=-14;sc.right=14;sc.top=22;sc.bottom=-6;sc.near=1;sc.far=60;
 key.shadow.bias=-0.0012; key.shadow.radius=9;
-const fill=new T.DirectionalLight(0xe8f0f8,.44); fill.position.set(-12,6,9);
-const rim=new T.DirectionalLight(0xeaf2ff,.50); rim.position.set(-2,9,-14);
-const bounce=new T.DirectionalLight(0xfff0e2,.30); bounce.position.set(2,-9,6);
-const amb=new T.AmbientLight(0xffffff,.13);
-scene.add(key,fill,rim,bounce,amb,new T.HemisphereLight(0xf2f7fa,0x93a0a8,.38));
+const fill=new T.DirectionalLight(0xdff4ff,.78); fill.position.set(-12,6,9);
+const rim=new T.DirectionalLight(0xffffff,.72); rim.position.set(-2,9,-14);
+const bounce=new T.DirectionalLight(0xfff8ee,.48); bounce.position.set(2,-9,6);
+const amb=new T.AmbientLight(0xffffff,.34);
+scene.add(key,fill,rim,bounce,amb,new T.HemisphereLight(0xffffff,0xc7d9e2,.62));
 
 const ground=new T.Mesh(new T.PlaneGeometry(90,90),new T.ShadowMaterial({opacity:.11}));
 ground.rotation.x=-Math.PI/2; ground.position.y=-0.02; ground.receiveShadow=true; scene.add(ground);
@@ -2037,8 +2091,163 @@ canvas.addEventListener("wheel",e=>{
   e.preventDefault(); camT.r=Math.max(3.5,Math.min(70,camT.r*(1+Math.sign(e.deltaY)*0.12)));
 },{passive:false});
 
+
+/* ===================== 실제 해부 모델 팔꿈치 굴곡 데모 =====================
+   Open3DModel의 실제 상지 GLB를 그대로 사용하고, 구조별 mesh를 보존한 상태에서
+   전완부를 팔꿈치 축으로 회전시키며 이두근의 길이/두께 변화를 시각적으로 표현한다.
+   교육용 시각화이며, 생체역학/근육 변형의 정량적 시뮬레이션은 아니다. */
+const realElbow={on:false,playing:false,t:0,dir:1,angle:0,pivot:null,base:new Map(),meshes:[],forearm:[],hand:[],biceps:[],triceps:[],tendons:[],axisSign:1};
+function realMeshesBy(test){
+  if(!realCache["d-upper"]) return [];
+  const a=[]; realCache["d-upper"].traverse(o=>{if(o.isMesh&&test(o))a.push(o);}); return a;
+}
+function realBoxCenter(ms){
+  const b=new T.Box3(); let n=0;
+  ms.forEach(m=>{m.updateWorldMatrix(true,false); b.expandByObject(m); n++;});
+  return n?b.getCenter(new T.Vector3()):null;
+}
+function realLocalCenter(ms){
+  const c=realBoxCenter(ms); if(!c) return null;
+  const root=realCache["d-upper"], sc=root.scale.x||1;
+  return c.clone().sub(root.position).multiplyScalar(1/sc);
+}
+function realPointRotateX(p,pivot,a){
+  const q=p.clone().sub(pivot), c=Math.cos(a), s=Math.sin(a);
+  return new T.Vector3(pivot.x+q.x,pivot.y+q.y*c-q.z*s,pivot.z+q.y*s+q.z*c);
+}
+function realElbowSetup(){
+  const root=realCache["d-upper"]; if(!root) return false;
+  realElbow.base.clear(); realElbow.meshes=[]; realElbow.forearm=[]; realElbow.hand=[]; realElbow.biceps=[]; realElbow.triceps=[]; realElbow.tendons=[];
+  root.updateWorldMatrix(true,true);
+  root.traverse(o=>{
+    if(!o.isMesh) return;
+    realElbow.base.set(o,o.matrix.clone()); realElbow.meshes.push(o);
+    const n=(o.userData.anatomyName||"").toLowerCase();
+    const g=(o.userData.anatomyGroup||"").toLowerCase();
+    if(/forearm -/.test(g)||/^(radius|ulna)\.r$/i.test(n)) realElbow.forearm.push(o);
+    if(/hand and wrist -/.test(g)) { realElbow.forearm.push(o); realElbow.hand.push(o); }
+    if(/biceps brachii|bicipital aponeurosis|biceps brachii tendon sheath/.test(n)) realElbow.biceps.push(o);
+    if(/triceps brachii/.test(n)) realElbow.triceps.push(o);
+    if(/common tendon of biceps|common tendon of triceps|tendon sheath|aponeurosis/.test(n)) realElbow.tendons.push(o);
+  });
+
+  /* 실제 관절점 추정: 요골/척골의 '이두근 쪽 끝'을 팔꿈치 고정점으로 사용한다.
+     핵심은 단순히 bounding-box의 maxY를 쓰지 않고, 손 중심과 반대쪽에 있는
+     근위 끝 후보 중 이두근 중심에 가장 가까운 점을 선택하는 것이다. */
+  const foreBones=[];
+  root.traverse(o=>{
+    if(!o.isMesh) return;
+    const n=(o.userData.anatomyName||"");
+    if(/^(radius|ulna)\.r$/i.test(n)) foreBones.push(o);
+  });
+  const wristW=realBoxCenter(realElbow.hand.length?realElbow.hand:realElbow.forearm);
+  const bicW=realBoxCenter(realElbow.biceps);
+  if(!wristW||!bicW||!foreBones.length) return false;
+
+  // 각 뼈의 bounding-box 8개 모서리 중 이두근 쪽에 가장 가까운 점을 관절 후보로 수집
+  const candidates=[];
+  foreBones.forEach(o=>{
+    o.updateWorldMatrix(true,false);
+    const b=new T.Box3().setFromObject(o);
+    const pts=[];
+    for(const x of [b.min.x,b.max.x]) for(const y of [b.min.y,b.max.y]) for(const z of [b.min.z,b.max.z]) pts.push(new T.Vector3(x,y,z));
+    pts.sort((a,b)=>a.distanceTo(bicW)-b.distanceTo(bicW));
+    candidates.push(...pts.slice(0,3));
+  });
+  // 두 뼈의 근위 후보가 모이는 지점을 평균하여 관절 중심을 안정화
+  candidates.sort((a,b)=>a.distanceTo(bicW)-b.distanceTo(bicW));
+  const near=candidates.slice(0,Math.min(4,candidates.length));
+  const pivotW=near.reduce((v,p)=>v.add(p),new T.Vector3()).multiplyScalar(1/near.length);
+  const sc=root.scale.x||1;
+  realElbow.pivot=pivotW.clone().sub(root.position).multiplyScalar(1/sc);
+
+  const wrist=realLocalCenter(realElbow.hand.length?realElbow.hand:realElbow.forearm);
+  const bic=realLocalCenter(realElbow.biceps);
+  if(!wrist||!bic) return false;
+
+  // 모델 좌표의 어느 축이 실제 팔꿈치 회전축인지 자동 탐색한다.
+  // X/Y/Z 각 축의 ± 방향을 시험하여 손이 이두근에 가장 가까워지는 조합을 선택한다.
+  const axes=[new T.Vector3(1,0,0),new T.Vector3(0,1,0),new T.Vector3(0,0,1)];
+  let best=null;
+  const testAngle=deg(70);
+  for(const axis of axes){
+    for(const sign of [1,-1]){
+      const q=new T.Quaternion().setFromAxisAngle(axis,sign*testAngle);
+      const p=wrist.clone().sub(realElbow.pivot).applyQuaternion(q).add(realElbow.pivot);
+      const d=p.distanceTo(bic);
+      if(!best||d<best.d) best={axis:axis.clone(),sign,d};
+    }
+  }
+  realElbow.axis=best.axis; realElbow.axisSign=best.sign;
+  return true;
+}
+function realApplyMatrix(o,M){o.matrix.copy(M);o.matrixAutoUpdate=false;}
+function realScaleAbout(o,center,sx,sy,sz){
+  const T1=new T.Matrix4().makeTranslation(-center.x,-center.y,-center.z);
+  const S=new T.Matrix4().makeScale(sx,sy,sz);
+  const T2=new T.Matrix4().makeTranslation(center.x,center.y,center.z);
+  const M=new T.Matrix4().multiply(T2).multiply(S).multiply(T1).multiply(realElbow.base.get(o));
+  realApplyMatrix(o,M);
+}
+function realRotateAbout(o,angle){
+  const p=realElbow.pivot;
+  const axis=realElbow.axis.clone().normalize();
+  const Rm=new T.Matrix4().makeRotationAxis(axis,realElbow.axisSign*angle);
+  const T1=new T.Matrix4().makeTranslation(-p.x,-p.y,-p.z);
+  const T2=new T.Matrix4().makeTranslation(p.x,p.y,p.z);
+  const M=new T.Matrix4().multiply(T2).multiply(Rm).multiply(T1).multiply(realElbow.base.get(o));
+  realApplyMatrix(o,M);
+}
+function realElbowApply(t){
+  if(!realElbow.pivot||!realElbow.axis) return;
+  const bend=deg(realElbow.angle)*t;
+  realElbow.meshes.forEach(o=>realApplyMatrix(o,realElbow.base.get(o)));
+  // 상완은 완전히 고정하고, 전완+손을 하나의 회전체로 취급한다.
+  realElbow.forearm.forEach(o=>realRotateAbout(o,bend));
+  const thick=1+0.065*t, short=1-0.075*t;
+  realElbow.biceps.forEach(o=>realScaleAbout(o,realLocalCenter([o])||realElbow.pivot,thick,short,thick));
+  realElbow.triceps.forEach(o=>realScaleAbout(o,realLocalCenter([o])||realElbow.pivot,0.985,1+0.035*t,0.985));
+}
+
+function startRealElbow(){
+  sysId="d-upper"; mode="learn"; sel=null; skinTouched=false; showSkin=false; refresh(true);
+  realElbow.on=true; realElbow.playing=true; realElbow.t=0; realElbow.angle=120;
+  const wait=()=>{
+    if(realCache["d-upper"]){ realElbowSetup(); realElbowApply(0); document.getElementById("realElbow").setAttribute("aria-pressed","true"); document.getElementById("jointPanel").classList.add("on"); document.getElementById("jointSlider").value=0; document.getElementById("jointAngle").textContent="0°"; return; }
+    setTimeout(wait,120);
+  }; wait();
+}
+function stopRealElbow(){
+  realElbow.on=false; realElbow.playing=false;
+  realElbow.meshes.forEach(o=>realElbow.base.has(o)&&realApplyMatrix(o,realElbow.base.get(o)));
+  document.getElementById("realElbow").setAttribute("aria-pressed","false"); document.getElementById("jointPanel").classList.remove("on");
+}
+function toggleRealElbow(){
+  if(realElbow.on){ realElbow.playing=!realElbow.playing; document.getElementById("realElbow").setAttribute("aria-pressed",realElbow.playing?"true":"false"); }
+  else startRealElbow();
+}
+
+function setRealElbowAngle(degValue){
+  if(!realElbow.on) startRealElbow();
+  realElbow.angle=Math.max(0,Math.min(120,Number(degValue)||0));
+  realElbow.playing=false;
+  realElbow.t=0;
+  realElbowApply(1);
+  const a=Math.round(realElbow.angle);
+  document.getElementById("jointSlider").value=a;
+  document.getElementById("jointAngle").textContent=a+"°";
+  document.getElementById("jointPlay").textContent="▶ 자동 움직임";
+}
+document.getElementById("jointSlider").addEventListener("input",e=>setRealElbowAngle(e.target.value));
+document.getElementById("jointReset").addEventListener("click",()=>setRealElbowAngle(0));
+document.getElementById("jointPlay").addEventListener("click",()=>{
+  if(!realElbow.on) startRealElbow();
+  realElbow.playing=!realElbow.playing;
+  document.getElementById("jointPlay").textContent=realElbow.playing?"Ⅱ 일시정지":"▶ 자동 움직임";
+});
+
 /* ===================== 상태 ===================== */
-let sex="m", sysId="skeletal", sel=null, mode="learn", showSkin=false, skinTouched=false;
+let sex="m", sysId="d-upper", sel=null, mode="learn", showSkin=false, skinTouched=false;
 const cacheShell={}, cacheSys={}, cacheMoveRig={};
 let shellG=null, sysG=null, moveRigG=null;
 const picks=[];
@@ -2408,6 +2617,8 @@ document.getElementById("moveNext").onclick=()=>{
   moveState.phase=(moveState.phase+1)%n; moveState.t=0; moveState.playing=false; renderMove();
 };
 
+document.getElementById("realElbow").onclick=toggleRealElbow;
+
 /* ===================== 루프 ===================== */
 function resize(){
   const w=canvas.clientWidth||1, h=canvas.clientHeight||1;
@@ -2426,6 +2637,17 @@ function tick(){
   cam.th+=(camT.th-cam.th)*k; cam.ph+=(camT.ph-cam.ph)*k; cam.r+=(camT.r-cam.r)*k;
   cam.tg.lerp(camT.tg,k);
   applyCam(); updateTip();
+  if(realElbow.on&&realElbow.playing&&realElbow.meshes.length){
+    realElbow.t+=dt/2600;
+    if(realElbow.t>=1){realElbow.t=0; realElbow.dir*=-1;}
+    const u=realElbow.dir>0?realElbow.t:1-realElbow.t;
+    const smooth=u*u*(3-2*u);
+    realElbowApply(smooth);
+    const a=Math.round(realElbow.angle*smooth);
+    document.getElementById("jointSlider").value=a;
+    document.getElementById("jointAngle").textContent=a+"°";
+    document.getElementById("jointPlay").textContent="Ⅱ 일시정지";
+  }
   if(mode==="move"&&moveState.playing&&moveRigG){
     moveState.t+=dt/MOVE_PHASE_MS;
     if(moveState.t>=1){
