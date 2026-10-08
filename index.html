@@ -3,6 +3,17 @@
 #realElbow[aria-pressed="true"]{box-shadow:0 0 0 2px rgba(214,67,57,.25),0 8px 24px rgba(214,67,57,.22)}
 .joint-panel{position:absolute;left:16px;bottom:18px;z-index:5;width:290px;padding:12px 14px;border-radius:14px;background:rgba(12,16,22,.86);color:#fff;backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,.25);font-size:12px;display:none}
 .joint-panel.on{display:block}
+/* 조작 패널은 3D 화면 아래에 놓아 움직이는 모델을 가리지 않게 한다 */
+.sim-dock .joint-panel{position:static!important;width:auto!important;margin:12px 0 0;left:auto;right:auto;bottom:auto}
+.sim-dock .joint-panel.on{display:grid;grid-template-columns:minmax(150px,200px) minmax(200px,1fr) auto;gap:2px 18px;align-items:center}
+.sim-dock .joint-row{grid-column:1;grid-row:1/3;margin:0;flex-wrap:wrap;gap:4px 10px}
+.sim-dock .joint-panel input[type=range]{grid-column:2;grid-row:1}
+.sim-dock .joint-ticks{grid-column:2;grid-row:2}
+.sim-dock .joint-btns{grid-column:3;grid-row:1;margin:0}
+.sim-dock .joint-speed{grid-column:3;grid-row:2;margin:4px 0 0}
+.sim-dock .joint-hint{grid-column:1/-1;grid-row:3;margin-top:6px}
+.sim-dock .joint-angle{font-size:18px}
+@media (max-width:760px){.sim-dock .joint-panel.on{display:block}.sim-dock .joint-row{margin:4px 0}.sim-dock .joint-hint{display:block}}
 .joint-row{display:flex;align-items:center;gap:10px;margin:7px 0}
 .joint-row b{font-size:13px}
 .joint-angle{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:13px}
@@ -431,6 +442,20 @@ footer .mono{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em}
       <canvas id="gl"></canvas>
       <div class="loading" id="loading">MODELING&nbsp;&nbsp;·&nbsp;&nbsp;잠시만요</div>
       <div class="viewnote" id="viewnote">실제 상지 해부 모델</div><div class="realistic-note" id="realisticNote" hidden>팔꿈치 근육 시뮬레이터 · 실제 상지 GLB</div>
+      <div class="tool2">        <button data-view="front">▮<span>앞면</span></button>
+        <button data-view="back">▯<span>뒤면</span></button>
+        <button data-view="left">◀<span>왼쪽</span></button>
+        <button data-view="right">▶<span>오른쪽</span></button>
+        <button data-view="top">▲<span>위쪽</span></button>
+        <button id="reset2">⟲<span>전체 보기</span></button>
+        <button id="spin2" aria-pressed="false">↻<span>자동 회전</span></button>
+        <button id="realElbow" aria-pressed="false" title="팔꿈치 근육 시뮬레이터">💪<span>팔꿈치 근육</span></button>
+        <button id="realSquat" aria-pressed="false" title="앉았다 일어서기 시뮬레이터">🪑<span>앉기·서기</span></button>
+        <button id="realBend" aria-pressed="false" title="허리 숙이고 펴기 시뮬레이터">🙇<span>허리 숙이기</span></button>
+        <button id="realPull" aria-pressed="false" title="턱걸이 시뮬레이터">🧗<span>턱걸이</span></button>
+      </div>
+    </div>
+    <div class="sim-dock" id="simDock">
       <div class="joint-panel" id="jointPanel" role="region" aria-label="팔꿈치 근육 시뮬레이터 조작">
         <div class="joint-row"><b>팔꿈치 근육 시뮬레이터</b><span class="joint-angle" id="jointAngle">0°</span></div>
         <input id="jointSlider" type="range" min="0" max="145" value="0" step="1" aria-label="팔꿈치 굽힘 각도 (0°는 완전히 편 상태, 145°는 완전히 굽힌 상태)">
@@ -459,15 +484,33 @@ footer .mono{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em}
         </div>
         <div class="joint-hint" id="sqHint">슬라이더를 움직이면 발을 바닥에 둔 채 무릎·엉덩관절·발목이 함께 굽혀지며 의자에 앉습니다.</div>
       </div>
-      <div class="tool2">        <button data-view="front">▮<span>앞면</span></button>
-        <button data-view="back">▯<span>뒤면</span></button>
-        <button data-view="left">◀<span>왼쪽</span></button>
-        <button data-view="right">▶<span>오른쪽</span></button>
-        <button data-view="top">▲<span>위쪽</span></button>
-        <button id="reset2">⟲<span>전체 보기</span></button>
-        <button id="spin2" aria-pressed="false">↻<span>자동 회전</span></button>
-        <button id="realElbow" aria-pressed="false" title="팔꿈치 근육 시뮬레이터">💪<span>팔꿈치 근육</span></button>
-        <button id="realSquat" aria-pressed="false" title="앉았다 일어서기 시뮬레이터">🪑<span>앉기·서기</span></button>
+<div class="joint-panel" id="bendPanel" role="region" aria-label="허리 숙이고 펴기 시뮬레이터 조작">
+        <div class="joint-row"><b>허리 숙이고 펴기 시뮬레이터</b><span class="joint-angle" id="bdPct">0%</span></div>
+        <input id="bdSlider" type="range" min="0" max="100" value="0" step="1" aria-label="숙인 정도 (0%는 바로 선 자세, 100%는 끝까지 숙인 자세)">
+        <div class="joint-ticks" aria-hidden="true"><span>0% 바로 섬</span><span>50%</span><span>100% 끝까지 숙임</span></div>
+        <div class="joint-btns">
+          <button id="bdPlay" aria-pressed="false">▶ 자동 움직임</button>
+          <button id="bdReset">↺ 펴기</button>
+          <button id="bdClose" aria-label="시뮬레이터 닫기" title="시뮬레이터 닫기">✕</button>
+        </div>
+        <div class="joint-speed" id="bdSpeed" role="group" aria-label="재생 속도">
+          <button data-s="0.5" aria-pressed="false">0.5×</button><button data-s="1" aria-pressed="true">1×</button><button data-s="2" aria-pressed="false">2×</button>
+        </div>
+        <div class="joint-hint" id="bdHint">슬라이더를 움직이면 무릎을 편 채 골반이 앞으로 기울고 허리·등이 둥글게 굽으며 상체를 숙입니다.</div>
+      </div>
+<div class="joint-panel" id="pullPanel" role="region" aria-label="턱걸이 시뮬레이터 조작">
+        <div class="joint-row"><b>턱걸이 시뮬레이터</b><span class="joint-angle" id="puPct">0%</span></div>
+        <input id="puSlider" type="range" min="0" max="100" value="0" step="1" aria-label="올라간 정도 (0%는 매달린 자세, 100%는 턱이 봉 위로 올라간 자세)">
+        <div class="joint-ticks" aria-hidden="true"><span>0% 매달리기</span><span>50%</span><span>100% 턱이 봉 위</span></div>
+        <div class="joint-btns">
+          <button id="puPlay" aria-pressed="false">▶ 자동 움직임</button>
+          <button id="puReset">↺ 매달리기</button>
+          <button id="puClose" aria-label="시뮬레이터 닫기" title="시뮬레이터 닫기">✕</button>
+        </div>
+        <div class="joint-speed" id="puSpeed" role="group" aria-label="재생 속도">
+          <button data-s="0.5" aria-pressed="false">0.5×</button><button data-s="1" aria-pressed="true">1×</button><button data-s="2" aria-pressed="false">2×</button>
+        </div>
+        <div class="joint-hint" id="puHint">슬라이더를 움직이면 손은 봉을 잡은 채 어깨와 팔꿈치가 굽혀지며 몸이 위로 올라갑니다.</div>
       </div>
     </div>
     <p class="draghint">↺ 드래그하여 회전하세요 ↻</p>
@@ -546,6 +589,54 @@ footer .mono{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em}
         <p class="el-note">* 굵기는 원래 모델 대비 근육 배의 두께, 길이는 선 자세를 100%로 둔 근육-힘줄 길이로, 모두 관절 각도에서 계산한 모식 추정값입니다. 상태의 ‘단축성’은 짧아지며 힘을 내는 수축, ‘신장성’은 길어지면서 힘을 내는 수축, ‘등척성’은 길이 변화 없이 힘을 내는 수축입니다. 근육 이름을 누르면 위쪽에 설명이 나타납니다.</p>
       </div>
     </section>
+    <section class="card" id="bendcard" hidden aria-live="polite">
+      <div class="hd"><h2>허리 숙이고 펴기 시뮬레이터</h2><span class="cnt" id="bdPhaseEn">UPRIGHT</span></div>
+      <div class="bd">
+        <div class="el-head">
+          <div><p class="el-eyebrow">현재 동작</p><p class="el-phase" id="bdPhase" data-dir="0">정지 · 바로 선 자세</p></div>
+        </div>
+        <div class="sq-angles">
+          <div><b id="bdH">0°</b><span>엉덩관절 굽힘</span></div>
+          <div><b id="bdLu">0°</b><span>허리 굽힘</span></div>
+          <div><b id="bdTh">0°</b><span>등 굽힘</span></div>
+          <div><b id="bdTot">0°</b><span>몸통 기울기</span></div>
+        </div>
+        <dl class="el-roles sq-roles">
+          <dt>주동근</dt><dd id="bdAgonist">—</dd>
+          <dt>협력근</dt><dd id="bdSynergist">—</dd>
+          <dt>길항근</dt><dd id="bdAntagonist">—</dd>
+        </dl>
+        <table class="el-table">
+          <thead><tr><th>근육</th><th>상태</th><th>활성</th><th>굵기*</th><th>길이*</th></tr></thead>
+          <tbody id="bdRows"></tbody>
+        </table>
+        <p class="el-note">* 굵기는 원래 모델 대비 근육 배의 두께, 길이는 바로 선 자세를 100%로 둔 근육-힘줄 길이로, 모두 관절 각도에서 계산한 모식 추정값입니다. 척추세움근·배곧은근은 실제 모델에 들어 있지 않아 척주를 따라 움직이는 모식 근육으로 보여줍니다. 숙이는 힘은 주로 중력이 내고, 등·엉덩이 근육은 길어지면서 힘을 내(신장성 수축) 천천히 내려가게 합니다. 근육 이름을 누르면 위쪽에 설명이 나타납니다.</p>
+      </div>
+    </section>
+    <section class="card" id="pullcard" hidden aria-live="polite">
+      <div class="hd"><h2>턱걸이 시뮬레이터</h2><span class="cnt" id="puPhaseEn">DEAD HANG</span></div>
+      <div class="bd">
+        <div class="el-head">
+          <div><p class="el-eyebrow">현재 동작</p><p class="el-phase" id="puPhase" data-dir="0">정지 · 매달리기</p></div>
+        </div>
+        <div class="sq-angles">
+          <div><b id="puS">165°</b><span>어깨 굽힘</span></div>
+          <div><b id="puE">8°</b><span>팔꿈치 굽힘</span></div>
+          <div><b id="puRise">0cm</b><span>몸 올라감</span></div>
+          <div><b id="puLean">0°</b><span>몸통 기울기</span></div>
+        </div>
+        <dl class="el-roles sq-roles">
+          <dt>주동근</dt><dd id="puAgonist">—</dd>
+          <dt>협력근</dt><dd id="puSynergist">—</dd>
+          <dt>길항근</dt><dd id="puAntagonist">—</dd>
+        </dl>
+        <table class="el-table">
+          <thead><tr><th>근육</th><th>상태</th><th>활성</th><th>굵기*</th><th>길이*</th></tr></thead>
+          <tbody id="puRows"></tbody>
+        </table>
+        <p class="el-note">* 손바닥이 몸쪽을 향하는 턱걸이(친업)를 옆에서 본 동작으로 단순화했습니다. 어깨 굽힘은 팔을 내린 자세를 0°로 잰 각도입니다. 길이는 매달린 자세를 100%로 둔 근육-힘줄 길이로 관절 각도와 모멘트팔에서 계산했고, 굵기는 원래 모델 대비 근육 배의 두께입니다. 모두 활성도와 함께 모식 추정값입니다. 몸을 올리는 힘은 근육이 짧아지며(단축성), 내려갈 때는 길어지면서 힘을 내 속도를 조절합니다(신장성). 근육 이름을 누르면 위쪽에 설명이 나타납니다.</p>
+      </div>
+    </section>
     <section class="card" id="listcard">
       <div class="hd"><h2>구조물 목록</h2><span class="cnt" id="listcount"></span></div>
       <div class="searchwrap"><input type="search" id="partSearch" placeholder="구조를 검색..."></div>
@@ -563,7 +654,7 @@ footer .mono{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em}
     <p><b>변경 사항</b> 웹에서 빠르게 보이도록 원본 모델을 가공했습니다. 압축 방식을 다시 적용했고, 텍스처(노멀맵)와 일부 구조(근막·윤활주머니·인대·관절주머니 등)를 뺐습니다. 또한 분류별 색을 바꾸고, 오른쪽 모델을 좌우 대칭으로 복제했으며, 우리말 명칭을 덧붙였습니다.</p>
     <p><b>동일조건 변경허락</b> 이 페이지에 들어 있는 가공된 해부 모델은 원 라이선스와 같은 <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ko" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a> 조건으로 배포합니다. 누구나 같은 조건과 출처 표시를 지키면 복제·배포·수정할 수 있습니다.</p>
     <p><b>원천 자료</b> Open3DModel은 이전 모델인 BodyParts3D(© 라이프사이언스 통합데이터베이스센터 DBCLS, CC BY-SA 2.1 JP)와 Z-Anatomy를 바탕으로 만들어졌습니다.</p>
-    <p><b>보증 없음</b> 원 제작자와 소속 기관은 이 페이지를 보증하거나 후원하지 않습니다. 모델은 교육용이며 원 라이선스에 따라 어떠한 보증도 없이 제공됩니다. 팔꿈치 근육 시뮬레이터(0–145°)와 앉았다 일어서기 시뮬레이터는 각각 실제 상지·하지 GLB를 이용한 교육용 시각화이며, 근육 길이·굵기 변화는 모식적 표현으로 임상용 생체역학 시뮬레이터가 아닙니다.</p>
+    <p><b>보증 없음</b> 원 제작자와 소속 기관은 이 페이지를 보증하거나 후원하지 않습니다. 모델은 교육용이며 원 라이선스에 따라 어떠한 보증도 없이 제공됩니다. 팔꿈치 근육 시뮬레이터(0–145°), 앉았다 일어서기 시뮬레이터, 허리 숙이고 펴기 시뮬레이터, 턱걸이 시뮬레이터는 실제 상지·하지 GLB를 이용한 교육용 시각화이며, 근육 길이·굵기 변화는 모식적 표현으로 임상용 생체역학 시뮬레이터가 아닙니다.</p>
     <p><b>그 밖의 요소</b> 호흡·소화·비뇨·생식계통의 모식 모형, 동작모드, 화면 구성과 코드는 개발자 I.H KIM이 만들었습니다. 사용한 소프트웨어: <a href="https://threejs.org/" target="_blank" rel="noopener noreferrer">three.js</a> (MIT 라이선스), <a href="https://github.com/google/draco" target="_blank" rel="noopener noreferrer">Draco</a> 디코더 (Apache License 2.0).</p>
   </section>
     <p class="mono">8 SYSTEMS · MALE &amp; FEMALE · WEBGL</p>
@@ -1929,7 +2020,7 @@ function buildRealView(id){
             m.matrixAutoUpdate=false; m.matrix.copy(o.matrixWorld); if(mirror) m.matrix.premultiply(MIRROR);
             m.userData.anatomyName=name;
             m.userData.anatomyGroup=group;
-            m.userData.anatomyFile=p.f;
+            m.userData.anatomyFile=p.f; m.userData.isRight=isRight;
             m.castShadow=!p.ctx; m.receiveShadow=false;
             if(p.ctx){ m.userData.ctx=true; m.renderOrder=-1; }
             else { m.userData.id=sid; ids.add(sid); }
@@ -2384,7 +2475,7 @@ function elBounds(){
 }
 function elRefreshUI(){
   const on=realElbow.on;
-  document.getElementById("realisticNote").hidden=!(on||squat.on);
+  document.getElementById("realisticNote").hidden=!(on||squat.on||bend.on||pull.on);
   if(on) document.getElementById("realisticNote").textContent="팔꿈치 근육 시뮬레이터 · 실제 상지 GLB";
   document.getElementById("realElbow").setAttribute("aria-pressed",on+"");
   document.getElementById("jointPanel").classList.toggle("on",on);
@@ -2398,6 +2489,7 @@ function elSetHash(on){
 }
 function startRealElbow(){
   if(realElbow.on) return;
+  if(pull.on) stopPull();
   realElbow.on=true; realElbow.failed=false;
   realElbow.playing=!reduce; realElbow.angle=0; realElbow.target=0; realElbow.phase=0; realElbow.prev=0; realElbow.velS=0;
   if(sysId!=="d-upper"||mode!=="learn"){ sysId="d-upper"; mode="learn"; sel=null; quiz.q=null; moveState.playing=false;
@@ -2409,11 +2501,11 @@ function startRealElbow(){
     if(REAL_VIEWS["d-upper"].failed||!GLB_OK){ elFail("실제 상지 모델을 불러오지 못해 시뮬레이터를 실행할 수 없습니다."); return; }
     if(!realCache["d-upper"]){ setTimeout(wait,150); return; }
     if(!realElbowSetup()){ elFail("모델에서 팔꿈치 구조를 찾지 못했습니다."); return; }
-    elSwap(true); realElbow.drawn=-1; elApply(); elBounds();
+    elSwap(true); realElbow.drawn=-1; elApply(); elBounds(); mirrorBuild(realElbow.root);
     document.getElementById("jointHint").textContent="슬라이더로 각도를 바꾸거나 자동 움직임을 재생하세요. 시뮬레이터 표에서 근육 이름을 누르면 설명이 나타납니다.";
     elBuildRows();
     const pw=realElbow.pivot.clone().applyMatrix4(realElbow.root.matrixWorld);
-    flyTo(pw.clone().add(new T.Vector3(0,-0.3,1.5)),19,-1.25,1.45);
+    flyTo(new T.Vector3(0,0.9,0).applyMatrix4(realElbow.root.matrixWorld),34,-0.55,1.45);   /* 전신 */
   };
   wait();
 }
@@ -2425,6 +2517,7 @@ function elFail(msg){
 function stopRealElbow(){
   if(!realElbow.on) return;
   realElbow.on=false; realElbow.playing=false;
+  mirrorClear();
   if(realElbow.ready){ elSwap(false); elBounds(); }
   elRefreshUI(); elSetHash(false);
 }
@@ -2644,7 +2737,7 @@ function sqChair(hipSeat,floor,side,ant){
   const g=new T.Group();
   const m=new T.MeshStandardMaterial({color:new T.Color("#8fa4b2").convertSRGBToLinear(),roughness:.8,metalness:0,transparent:true,opacity:.28,depthWrite:false});
   const seatY=hipSeat.y-0.11, w=0.46, dpt=0.42, th=0.035;
-  const fwd=new T.Vector3(ant.x,0,ant.z).normalize(), cx=hipSeat.x-side*0.08, c=new T.Vector3(cx,0,hipSeat.z).addScaledVector(fwd,0.05);
+  const fwd=new T.Vector3(ant.x,0,ant.z).normalize(), cx=0, c=new T.Vector3(cx,0,hipSeat.z).addScaledVector(fwd,0.05);
   const box=(sx,sy,sz,x,y,z)=>{ const b=new T.Mesh(new T.BoxGeometry(sx,sy,sz),m); b.position.set(x,y,z); b.rotation.y=Math.atan2(fwd.x,fwd.z); b.renderOrder=-1; g.add(b); return b; };
   box(w,th,dpt,c.x,seatY-th/2,c.z);
   const right=new T.Vector3(fwd.z,0,-fwd.x);
@@ -2715,10 +2808,11 @@ function sqRefreshUI(){
   document.getElementById("sqPlay").setAttribute("aria-pressed",squat.playing+"");
   if(on) document.getElementById("realisticNote").textContent="앉았다 일어서기 시뮬레이터 · 실제 하지 GLB";
   else document.getElementById("realisticNote").textContent="팔꿈치 근육 시뮬레이터 · 실제 상지 GLB";
-  document.getElementById("realisticNote").hidden=!(on||realElbow.on);
+  document.getElementById("realisticNote").hidden=!(on||realElbow.on||bend.on||pull.on);
 }
 function startSquat(){
   if(squat.on) return;
+  if(bend.on) stopBend();
   squat.on=true; squat.failed=false;
   squat.playing=!reduce; squat.p=0; squat.target=0; squat.phase=0; squat.prev=0; squat.velS=0;
   if(sysId!=="d-lower"||mode!=="learn"){ sysId="d-lower"; mode="learn"; sel=null; quiz.q=null; moveState.playing=false;
@@ -2731,11 +2825,11 @@ function startSquat(){
     if(REAL_VIEWS["d-lower"].failed||!GLB_OK){ sqFail("실제 하지 모델을 불러오지 못해 시뮬레이터를 실행할 수 없습니다."); return; }
     if(!realCache["d-lower"]){ setTimeout(wait,150); return; }
     if(!sqSetup()){ sqFail("모델에서 다리 관절 구조를 찾지 못했습니다."); return; }
-    sqSwap(true); squat.drawn=-1; squat.ang=sqAngles(squat.p); sqApply(); sqBounds();
+    sqSwap(true); squat.drawn=-1; squat.ang=sqAngles(squat.p); sqApply(); sqBounds(); mirrorBuild(squat.root);
     document.getElementById("sqHint").textContent="슬라이더로 앉은 정도를 바꾸거나 자동 움직임을 재생하세요. 표에서 근육 이름을 누르면 설명이 나타납니다.";
     sqBuildRows();
     const kw=squat.J.knee.clone().applyMatrix4(squat.root.matrixWorld);
-    flyTo(kw.clone().add(new T.Vector3(0,0.6,0.6)),30,-1.3,1.47);
+    flyTo(new T.Vector3(0,0.78,0).applyMatrix4(squat.root.matrixWorld),30,-1.05,1.47);   /* 전신 */
   };
   wait();
 }
@@ -2743,6 +2837,7 @@ function sqFail(msg){ squat.failed=true; squat.playing=false; document.getElemen
 function stopSquat(){
   if(!squat.on) return;
   squat.on=false; squat.playing=false;
+  mirrorClear();
   if(squat.ready){ sqSwap(false); sqBounds(); }
   sqRefreshUI();
   if(location.hash==="#squat"){ try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){} }
@@ -2853,6 +2948,805 @@ document.querySelectorAll("#sqSpeed button").forEach(b=>b.addEventListener("clic
   document.querySelectorAll("#sqSpeed button").forEach(x=>x.setAttribute("aria-pressed",(x===b)+""));
 }));
 
+/* ===================== 허리 숙이고 펴기 시뮬레이터 (실제 하지 GLB + 뼈대) =====================
+   정밀 모델 › 다리(하지)의 하지 GLB와 반투명 뼈대를 쓴다.
+   - 다리는 바닥에 선 채 고정하고, 골반은 엉덩관절 중심으로 앞으로 기울며(엉덩관절 굽힘),
+     허리뼈 5개·등뼈 12개·목뼈는 마디마다 조금씩 굽어 척주 전체가 둥글게 숙여진다(허리-골반 리듬).
+   - 팔은 어깨에서 늘 아래로 늘어지도록 보정한다.
+   - 큰볼기근·넙다리뒤근육·엉덩허리근은 실제 모델의 근육을 변형하고,
+     실제 모델에 없는 척추세움근·배곧은근은 척주를 따라 움직이는 모식 근육으로 만든다.
+   교육용 시각화이며, 관절 각도와 근육 길이·굵기 수치는 모식적 추정값이다. */
+const BD_REAL=[
+ {key:"glute",ko:"큰볼기근",en:"Gluteus maximus",re:/^gluteus maximus muscle$/i,
+  origin:"엉덩뼈 뒷면·엉치뼈·꼬리뼈",insertion:"넙다리뼈 볼기근거친면",action:"엉덩관절 폄 — 숙인 상체를 들어 올림"},
+ {key:"ham",ko:"넙다리뒤근육",en:"Hamstrings",re:/^((long|short) head of biceps femoris|semitendinosus muscle|semimembranosus muscle)$/i,
+  origin:"궁둥뼈결절",insertion:"종아리뼈머리·정강뼈 안쪽",action:"엉덩관절 폄, 무릎 굽힘 — 숙이면 늘어나며 당김"},
+ {key:"ilio",ko:"엉덩허리근",en:"Iliopsoas",re:/^(iliacus muscle|psoas major)$/i,
+  origin:"허리뼈·엉덩뼈오목",insertion:"넙다리뼈 작은돌기",action:"엉덩관절 굽힘"}
+];
+const BD_PROC=[
+ {key:"erector",ko:"척추세움근",en:"Erector spinae (모식)",
+  origin:"엉치뼈·엉덩뼈능선·허리뼈 가시돌기",insertion:"갈비뼈·등뼈·목뼈 가로돌기와 가시돌기",action:"척주 폄 — 숙일 때 길어지며 속도 조절, 펼 때 짧아지며 들어 올림",
+  d:"척주 양옆을 따라 길게 뻗은 근육 무리(엉덩갈비근·가장긴근·가시근). 이 모델에는 들어 있지 않아 위치와 길이를 나타내는 모식 형상으로 보여줍니다.",loc:"척주 양옆 (등·허리)"},
+ {key:"rect",ko:"배곧은근",en:"Rectus abdominis (모식)",
+  origin:"두덩뼈 위모서리·두덩결합",insertion:"복장뼈 칼돌기·5~7번째 갈비연골",action:"척주 굽힘 — 숙이기 시작할 때 약하게 작용",
+  d:"배 앞쪽 한가운데를 세로로 지나는 근육. 이 모델에는 들어 있지 않아 위치와 길이를 나타내는 모식 형상으로 보여줍니다.",loc:"배 앞면"}
+];
+const BD_VERT=["L5","L4","L3","L2","L1","T12","T11","T10","T9","T8","T7","T6","T5","T4","T3","T2","T1","C7","C6","C5","C4","C3","C2","C1"];
+const BD_ARM=/^(humerus|radius|ulna|scaphoid|lunate( bone)?|triquetrum|pisiform|trapezium|trapezoid|capitate|hamate|sesamoid_bones_of_hand)$|metacarpal|phalanx of .*finger$/i;
+const bend={on:false,ready:false,failed:false,playing:false,p:0,target:0,phase:0,speed:1,prev:0,velS:0,dir:0,
+  root:null,hip:null,verts:[],rigid:[],deform:[],groups:[],proc:[],drawn:-1,lastBounds:0,lastUI:0,ang:{H:0,Lu:0,Th:0,Ce:0},Ms:null};
+/* 숙인 정도 p(0=바로 선 자세, 1=끝까지 숙인 자세) → 각도(도). 처음엔 허리가, 나중엔 엉덩관절이 주로 굽는다 */
+function bdAngles(p){
+  const Lu=45*(1-(1-p)*(1-p)), H=70*Math.pow(p,1.4), Th=15*p, Ce=10*p;
+  return {H:H,Lu:Lu,Th:Th,Ce:Ce,Tot:H+Lu+Th};
+}
+const BD_AX=new T.Vector3(1,0,0);   /* 좌우 축: +각도 = 위쪽이 앞(+z)으로 기울어짐 */
+function bdRot(c,a){
+  return new T.Matrix4().makeTranslation(c.x,c.y,c.z).multiply(new T.Matrix4().makeRotationAxis(BD_AX,a)).multiply(new T.Matrix4().makeTranslation(-c.x,-c.y,-c.z));
+}
+function bdSetup(){
+  const root=realCache["d-lower"]; if(!root) return false;
+  if(bend.root===root&&bend.ready) return true;
+  const meshes=[]; root.traverse(o=>{ if(o.isMesh) meshes.push(o); });
+  const nm=o=>o.userData.anatomyName||"";
+  const ctx=meshes.filter(o=>o.userData.ctx);
+  const femur=ctx.find(o=>/^femur$/i.test(nm(o))), sacrum=ctx.find(o=>/^sacrum$/i.test(nm(o))), hipb=ctx.find(o=>/^hip bone$/i.test(nm(o)));
+  const vmesh=BD_VERT.map(v=>ctx.find(o=>{const n=nm(o); return n.indexOf("("+v+")")>=0;}));
+  if(!femur||!sacrum||!hipb||vmesh.some(v=>!v)){ console.warn("[허리 숙이기] 척추뼈·골반을 찾지 못했습니다"); return false; }
+  const side=Math.sign(elCenter([femur]).x)||1;
+  /* 엉덩관절 중심 (넙다리뼈머리) */
+  const fp=elPoints(femur,1), fa=elPCA(fp), Af=fa.v.clone(); if(Af.y<0) Af.negate();
+  let top=-Infinity; fp.forEach(p=>{top=Math.max(top,p.clone().sub(fa.c).dot(Af));});
+  const up=fp.filter(p=>p.clone().sub(fa.c).dot(Af)>top-0.09);
+  let med=-Infinity; up.forEach(p=>{med=Math.max(med,-side*p.x);});
+  const head=up.filter(p=>-side*p.x>med-0.03);
+  const hip=new T.Vector3(); head.forEach(p=>hip.add(p)); hip.multiplyScalar(1/head.length); hip.x+=side*0.012;
+  /* 척추뼈: 몸통(앞쪽) 중심, 가시돌기(뒤쪽) 끝, 아래 마디와의 회전 중심 */
+  const verts=vmesh.map((o,i)=>{
+    const pts=elPoints(o,1); let z0=Infinity,z1=-Infinity; pts.forEach(p=>{z0=Math.min(z0,p.z); z1=Math.max(z1,p.z);});
+    const bodyP=pts.filter(p=>p.z>z1-0.45*(z1-z0)), spP=pts.filter(p=>p.z<z0+0.012);
+    const body=new T.Vector3(); bodyP.forEach(p=>body.add(p)); body.multiplyScalar(1/bodyP.length);
+    const spin=new T.Vector3(); spP.forEach(p=>spin.add(p)); spin.multiplyScalar(1/spP.length);
+    return {name:BD_VERT[i],o:o,body:body,spin:spin};
+  });
+  verts.forEach((v,i)=>{ v.pivot=i===0?v.body.clone().add(new T.Vector3(0,-0.022,0)):v.body.clone().add(verts[i-1].body).multiplyScalar(0.5); });
+  const shoulder=(()=>{ const h=ctx.find(o=>/^humerus$/i.test(nm(o))); if(!h) return null;
+    const hp=elPoints(h,2); let t=-Infinity; hp.forEach(p=>{t=Math.max(t,p.y);}); const cap=hp.filter(p=>p.y>t-0.04);
+    const c=new T.Vector3(); cap.forEach(p=>c.add(p)); return c.multiplyScalar(1/cap.length); })();
+  bend.hip=hip; bend.verts=verts; bend.shoulder=shoulder; bend.side=side;
+  /* 반투명 뼈대를 분절에 배정: -1 고정(다리), 0 골반, 1.. 척추뼈 번호, 팔은 별도 */
+  const vi=k=>BD_VERT.indexOf(k)+1;
+  const c1y=verts[verts.length-1].body.y;
+  const rigid=[];
+  ctx.forEach(o=>{
+    const n=nm(o); let seg=null, arm=false, m;
+    if(SQ_FOOT.test(n)||SQ_SHANK.test(n)||SQ_THIGH.test(n)) return;
+    if(/^(hip bone|sacrum|coccyx)$/i.test(n)) seg=0;
+    else if((m=n.match(/\((C\d|T\d+|L\d)\)$/))&&vi(m[1])) seg=vi(m[1]);
+    else if((m=n.match(/^Rib \((\d+)\w*\)$/i))||(m=n.match(/^Costal cart of (\d+)\w* rib$/i))) seg=vi("T"+m[1])||vi("T12");
+    else if(/sternum/i.test(n)) seg=vi("T4");
+    else if(/^(clavicle|scapula)$/i.test(n)) seg=vi("T2");
+    else if(BD_ARM.test(n)){ seg=vi("T2"); arm=true; }
+    else {
+      const c=elCenter([o]);
+      if(c.y>c1y) seg=vi("C1");
+      else { let best=0,bd=Infinity; verts.forEach((v,i)=>{const d=Math.abs(v.body.y-c.y); if(d<bd){bd=d;best=i+1;}}); seg=best; }
+    }
+    rigid.push({o:o,base:o.matrix.clone(),seg:seg,arm:arm});
+  });
+  /* 하지 GLB: 엉덩관절 아래는 고정, 엉덩관절 주변은 골반 회전과 섞고, 허리뼈 높이 위쪽은 해당 척추뼈를 따른다 */
+  const knee=(()=>{ let b=Infinity; fp.forEach(p=>{b=Math.min(b,p.clone().sub(fa.c).dot(Af));}); const c=fp.filter(p=>p.clone().sub(fa.c).dot(Af)<b+0.045);
+    const k=new T.Vector3(); c.forEach(p=>k.add(p)); return k.multiplyScalar(1/c.length); })();
+  const thighUp=hip.clone().sub(knee).normalize(), Bh=0.045, l5y=verts[0].pivot.y;
+  const sm=t=>{t=Math.min(1,Math.max(0,t)); return t*t*(3-2*t);};
+  const segOf=p=>{
+    const sh=p.clone().sub(hip).dot(thighUp);
+    if(sh<-Bh) return [0,0];
+    if(p.y>l5y&&Math.abs(p.x)<0.05){ let k=0; verts.forEach((v,i)=>{ if(v.pivot.y<=p.y) k=i; }); return [k+1,1]; }  /* 척주에 붙은 큰허리근 윗부분 */
+    return [0,sm((sh+Bh)/(2*Bh))];
+  };
+  const deform=[];
+  meshes.forEach(o=>{
+    if(o.userData.anatomyFile!=="lower-limb") return;
+    const g=BD_REAL.find(r=>r.re.test(nm(o)));
+    deform.push(bdMakeDeform(o,segOf,g||null));
+  });
+  bend.rigid=rigid; bend.deform=deform; bend.root=root;
+  bend.groups=BD_REAL.map(g=>{
+    const ms=deform.filter(d=>d.muscle===g), mats=[...new Set(ms.map(d=>d.o.userData.mat0||d.o.material))];
+    return {def:g,meshes:ms,mats:mats,color0:mats.map(m=>m.color.clone()),sid:ms.length?ms[0].o.userData.id:null,act:0,len:1,girth:1};
+  }).filter(g=>g.meshes.length);
+  bdBuildProc(sacrum,hipb,ctx.find(o=>/^body of sternum$/i.test(nm(o))));
+  bend.ready=true; bend.drawn=-1;
+  return true;
+}
+function bdMakeDeform(o,segOf,muscle){
+  const base=o.matrix.clone(), geo0=o.geometry, geo=geo0.clone(); geo.applyMatrix4(base);
+  if(!geo.attributes.normal) geo.computeVertexNormals();
+  const pa=geo.attributes.position, n=pa.count, P0=Float32Array.from(pa.array), N0=Float32Array.from(geo.attributes.normal.array);
+  const SG=new Uint8Array(n), W=new Float32Array(n), pts=[]; let moving=false;
+  for(let i=0;i<n;i++){ const p=new T.Vector3(P0[i*3],P0[i*3+1],P0[i*3+2]); pts.push(p); const r=segOf(p); SG[i]=r[0]; W[i]=r[1]; if(r[0]||r[1]>0) moving=true; }
+  const d={o:o,base:base,geo0:geo0,geo:geo,P0:P0,N0:N0,SG:SG,W:W,muscle:muscle,lenK:1,girth:1,still:!moving&&!muscle};
+  if(muscle){
+    const pca=elPCA(pts), M=pca.v, C=pca.c; let a0=Infinity,a1=-Infinity;
+    pts.forEach(p=>{const a=p.clone().sub(C).dot(M); a0=Math.min(a0,a); a1=Math.max(a1,a);});
+    const DA=new Float32Array(n*3), DR=new Float32Array(n*3);
+    for(let i=0;i<n;i++){
+      const v=pts[i].clone().sub(C), a=v.dot(M), u=(a-a0)/((a1-a0)||1);
+      const bump=Math.pow(Math.sin(Math.PI*Math.min(1,Math.max(0,u))),0.9), r=v.clone().addScaledVector(M,-a);
+      DA[i*3]=M.x*a*bump; DA[i*3+1]=M.y*a*bump; DA[i*3+2]=M.z*a*bump;
+      DR[i*3]=r.x*bump; DR[i*3+1]=r.y*bump; DR[i*3+2]=r.z*bump;
+    }
+    d.DA=DA; d.DR=DR;
+  }
+  return d;
+}
+/* 모식 근육: 분절에 붙은 기준점들을 잇는 곡선을 따라 튜브를 만든다 */
+const BD_RINGS=60, BD_SEG=22;
+function bdBuildProc(sacrum,hipb,sternum){
+  const V=bend.verts, side=bend.side, at=k=>BD_VERT.indexOf(k);
+  const lat=side*0.032, ant=new T.Vector3(0,0,1);
+  /* 척추세움근: 엉치뼈 뒤 → 허리뼈·등뼈 가시돌기 옆 */
+  const sac=(()=>{ const pts=elPoints(sacrum,1); let z0=Infinity,y1=-Infinity; pts.forEach(p=>{z0=Math.min(z0,p.z); y1=Math.max(y1,p.y);});
+    const c=new T.Vector3(); let n=0; pts.forEach(p=>{ if(p.z<z0+0.02&&p.y>y1-0.07){c.add(p);n++;} }); return c.multiplyScalar(1/Math.max(1,n)); })();
+  const er=[{seg:0,p:sac.clone().add(new T.Vector3(lat,0,-0.01))}].concat(["L5","L3","L1","T11","T8","T5","T2"].map(k=>{
+    const v=V[at(k)]; return {seg:at(k)+1,p:v.body.clone().lerp(v.spin,0.78).add(new T.Vector3(lat,0,0))}; }));
+  /* 배곧은근: 두덩뼈 → 배 앞벽(허리뼈에 붙여 함께 움직임) → 복장뼈 아래끝 */
+  const pub=(()=>{ const pts=elPoints(hipb,1); let z1=-Infinity; pts.forEach(p=>{ if(Math.abs(p.x)<0.06) z1=Math.max(z1,p.z); });
+    const c=new T.Vector3(); let n=0; pts.forEach(p=>{ if(Math.abs(p.x)<0.06&&p.z>z1-0.025){c.add(p);n++;} }); return c.multiplyScalar(1/Math.max(1,n)); })();
+  const xi=(()=>{ if(!sternum) return V[at("T8")].body.clone().add(new T.Vector3(0,0,0.13));
+    const pts=elPoints(sternum,1); let y0=Infinity; pts.forEach(p=>{y0=Math.min(y0,p.y);}); const c=new T.Vector3(); let n=0;
+    pts.forEach(p=>{ if(p.y<y0+0.02){c.add(p);n++;} }); return c.multiplyScalar(1/n); })();
+  const wall=k=>{ const v=V[at(k)]; const t=(v.body.y-pub.y)/((xi.y-pub.y)||1); const z=pub.z+(xi.z-pub.z)*t+0.035; return {seg:at(k)+1,p:new T.Vector3(side*0.035,v.body.y,z)}; };
+  const rc=[{seg:0,p:pub.clone().add(new T.Vector3(side*0.03,0.01,0.012))},wall("L4"),wall("L2"),wall("T12"),{seg:at("T8")+1,p:xi.clone().add(new T.Vector3(side*0.035,0,0.01))}];
+  bend.proc=[
+    bdTube(BD_PROC[0],er,u=>0.03*Math.pow(Math.sin(Math.PI*Math.min(1,u*1.05)),0.5)*(1-0.55*u),1.25,1),
+    bdTube(BD_PROC[1],rc,u=>0.011*Math.pow(Math.sin(Math.PI*u),0.4),3.2,1)
+  ];
+}
+function bdTube(def,anchors,radius,ex,ez){
+  const n=(BD_RINGS+1)*(BD_SEG+1), g=new T.BufferGeometry(), idx=[];
+  for(let i=0;i<BD_RINGS;i++) for(let j=0;j<BD_SEG;j++){ const a=i*(BD_SEG+1)+j, b=a+BD_SEG+1; idx.push(a,b,a+1,b,b+1,a+1); }
+  g.setIndex(idx); g.setAttribute("position",new T.BufferAttribute(new Float32Array(n*3),3));
+  const mat=new T.MeshStandardMaterial({color:EL_RELAX.clone(),roughness:.52,metalness:0,envMapIntensity:.28,side:T.DoubleSide});
+  const mesh=new T.Mesh(g,mat); mesh.frustumCulled=false; mesh.matrixAutoUpdate=false;
+  const id="p:"+def.key;
+  S[id]={ko:def.ko,en:def.en,d:def.d,loc:def.loc,cat:"muscle",real:false,note:"기시: "+def.origin+" · 정지: "+def.insertion};
+  mesh.userData.id=id; mesh.userData.anatomyName=def.en;
+  const R=[]; for(let i=0;i<=BD_RINGS;i++) R.push(radius(i/BD_RINGS));
+  return {def:def,mesh:mesh,mat:mat,anchors:anchors,R:R,ex:ex,ez:ez,sid:id,act:0,len:1,girth:1,L0:0,mats:[mat],color0:[mat.color.clone()]};
+}
+const _bT=new T.Vector3(),_bN=new T.Vector3(),_bB=new T.Vector3(),_bP=new T.Vector3();
+function bdSweep(t,Ms){
+  const pts=t.anchors.map(a=>a.p.clone().applyMatrix4(Ms[a.seg]));
+  const curve=new T.CatmullRomCurve3(pts,false,"centripetal"); curve.arcLengthDivisions=100;
+  const L=curve.getLength(); if(!t.L0) t.L0=L; t.len=L/t.L0;
+  const P=t.mesh.geometry.attributes.position.array;
+  for(let i=0;i<=BD_RINGS;i++){
+    const u=i/BD_RINGS; curve.getPointAt(u,_bP); curve.getTangentAt(u,_bT);
+    _bN.crossVectors(BD_AX,_bT).normalize(); _bB.crossVectors(_bT,_bN).normalize();
+    const r=t.R[i]*t.girth, rx=r*t.ex, rz=r*t.ez;
+    for(let j=0;j<=BD_SEG;j++){
+      const a=j/BD_SEG*Math.PI*2, ca=Math.cos(a), sa=Math.sin(a), k=(i*(BD_SEG+1)+j)*3;
+      P[k]=_bP.x+_bB.x*ca*rx+_bN.x*sa*rz; P[k+1]=_bP.y+_bB.y*ca*rx+_bN.y*sa*rz; P[k+2]=_bP.z+_bB.z*ca*rx+_bN.z*sa*rz;
+    }
+  }
+  t.mesh.geometry.attributes.position.needsUpdate=true; t.mesh.geometry.computeVertexNormals(); t.mesh.geometry.computeBoundingSphere(); t.mesh.geometry.computeBoundingBox();
+}
+/* 분절 행렬: [골반, 척추뼈1..N] */
+function bdMatrices(an){
+  const Ms=[bdRot(bend.hip,deg(an.H))];
+  bend.verts.forEach((v,i)=>{
+    const a=i<5?an.Lu/5:i<17?an.Th/12:an.Ce/7;
+    Ms.push(Ms[i].clone().multiply(bdRot(v.pivot,deg(a))));
+  });
+  return Ms;
+}
+function bdApply(){
+  const an=bend.ang, Ms=bdMatrices(an); bend.Ms=Ms;
+  const tot=deg(an.H+an.Lu+an.Th*(11/12));       /* T2 높이까지 누적된 기울기 */
+  const armFix=bend.shoulder?bdRot(bend.shoulder,-tot):new T.Matrix4();
+  bend.rigid.forEach(r=>{ const M=Ms[r.seg]; r.o.matrix.multiplyMatrices(M,r.arm?armFix.clone().multiply(r.base):r.base); });
+  const H=deg(an.H), hp=bend.hip, c1=Math.cos(H), s1=Math.sin(H), E=Ms.map(m=>m.elements);
+  bend.deform.forEach(d=>{
+    if(d.still&&d.done) return;
+    const P=d.geo.attributes.position.array, N=d.geo.attributes.normal.array, P0=d.P0, N0=d.N0, W=d.W, SG=d.SG, n=W.length;
+    const lk=d.muscle?d.lenK-1:0, gk=d.muscle?d.girth-1:0, DA=d.DA, DR=d.DR;
+    for(let i=0;i<n;i++){
+      const j=i*3, sg=SG[i];
+      let x=P0[j],y=P0[j+1],z=P0[j+2], nx=N0[j],ny=N0[j+1],nz=N0[j+2];
+      if(DA){ x+=DA[j]*lk+DR[j]*gk; y+=DA[j+1]*lk+DR[j+1]*gk; z+=DA[j+2]*lk+DR[j+2]*gk; }
+      if(sg===0){
+        const w=W[i];
+        if(w>0){ let c=c1,s=s1; if(w<1){ c=Math.cos(H*w); s=Math.sin(H*w); }
+          const vy=y-hp.y, vz=z-hp.z; y=hp.y+vy*c-vz*s; z=hp.z+vy*s+vz*c;      /* x축 회전 */
+          const my=ny*c-nz*s, mz=ny*s+nz*c; ny=my; nz=mz; }
+        P[j]=x;P[j+1]=y;P[j+2]=z; N[j]=nx;N[j+1]=ny;N[j+2]=nz;
+      } else {
+        const e=E[sg];
+        P[j]=e[0]*x+e[4]*y+e[8]*z+e[12]; P[j+1]=e[1]*x+e[5]*y+e[9]*z+e[13]; P[j+2]=e[2]*x+e[6]*y+e[10]*z+e[14];
+        N[j]=e[0]*nx+e[4]*ny+e[8]*nz; N[j+1]=e[1]*nx+e[5]*ny+e[9]*nz; N[j+2]=e[2]*nx+e[6]*ny+e[10]*nz;
+      }
+    }
+    d.geo.attributes.position.needsUpdate=true; d.geo.attributes.normal.needsUpdate=true; d.done=true;
+  });
+  bend.proc.forEach(t=>bdSweep(t,Ms));
+}
+function bdSwap(on){
+  bend.deform.forEach(d=>{ d.o.geometry=on?d.geo:d.geo0; d.o.matrix.copy(on?new T.Matrix4():d.base); d.o.matrixAutoUpdate=false; d.o.frustumCulled=!on; d.done=false; });
+  if(on){ bend.proc.forEach(t=>{ bend.root.add(t.mesh); if(picks.indexOf(t.mesh)<0) picks.push(t.mesh); }); }
+  else{
+    bend.rigid.forEach(r=>r.o.matrix.copy(r.base));
+    bend.groups.forEach(g=>g.mats.forEach((m,i)=>m.color.copy(g.color0[i])));
+    bend.proc.forEach(t=>{ if(t.mesh.parent) t.mesh.parent.remove(t.mesh); const k=picks.indexOf(t.mesh); if(k>=0) picks.splice(k,1); });
+    if(sel&&/^p:/.test(sel)){ sel=null; applySel(); renderDetail(); }
+  }
+}
+function bdBounds(){ bend.deform.forEach(d=>{ if(!d.still){ d.geo.computeBoundingSphere(); d.geo.computeBoundingBox(); } }); }
+function bdRefreshUI(){
+  const on=bend.on;
+  document.getElementById("realBend").setAttribute("aria-pressed",on+"");
+  document.getElementById("bendPanel").classList.toggle("on",on);
+  document.getElementById("bendcard").hidden=!on;
+  const sb=document.getElementById("bendEntry"); if(sb) sb.setAttribute("aria-pressed",on+"");
+  document.getElementById("bdPlay").textContent=bend.playing?"Ⅱ 일시정지":"▶ 자동 움직임";
+  document.getElementById("bdPlay").setAttribute("aria-pressed",bend.playing+"");
+  const note=document.getElementById("realisticNote");
+  if(on) note.textContent="허리 숙이고 펴기 시뮬레이터 · 실제 하지 GLB + 모식 근육";
+  note.hidden=!(on||squat.on||realElbow.on||pull.on);
+}
+function startBend(){
+  if(bend.on) return;
+  if(squat.on) stopSquat();
+  bend.on=true; bend.failed=false;
+  bend.playing=!reduce; bend.p=0; bend.target=0; bend.phase=0; bend.prev=0; bend.velS=0;
+  if(sysId!=="d-lower"||mode!=="learn"){ sysId="d-lower"; mode="learn"; sel=null; quiz.q=null; moveState.playing=false;
+    document.getElementById("listcard").hidden=false; refresh(true); }
+  bdRefreshUI();
+  try{ history.replaceState(null,"","#bend"); }catch(e){}
+  document.getElementById("bdHint").textContent="실제 하지 모델을 불러오는 중…";
+  const wait=()=>{
+    if(!bend.on) return;
+    if(REAL_VIEWS["d-lower"].failed||!GLB_OK){ bdFail("실제 하지 모델을 불러오지 못해 시뮬레이터를 실행할 수 없습니다."); return; }
+    if(!realCache["d-lower"]){ setTimeout(wait,150); return; }
+    if(!bdSetup()){ bdFail("모델에서 척주·골반 구조를 찾지 못했습니다."); return; }
+    bdSwap(true); bend.drawn=-1; bend.ang=bdAngles(bend.p); bdApply(); bdBounds(); mirrorBuild(bend.root,bend.proc.map(t=>t.mesh));
+    document.getElementById("bdHint").textContent="슬라이더로 숙인 정도를 바꾸거나 자동 움직임을 재생하세요. 표에서 근육 이름을 누르면 설명이 나타납니다.";
+    bdBuildRows();
+    const hw=bend.hip.clone().applyMatrix4(bend.root.matrixWorld);
+    flyTo(new T.Vector3(0,0.85,0.15).applyMatrix4(bend.root.matrixWorld),31,-1.15,1.45);   /* 전신 */
+  };
+  wait();
+}
+function bdFail(msg){ bend.failed=true; bend.playing=false; document.getElementById("bdHint").textContent=msg; bdRefreshUI(); }
+function stopBend(){
+  if(!bend.on) return;
+  bend.on=false; bend.playing=false;
+  mirrorClear();
+  if(bend.ready){ bdSwap(false); bdBounds(); }
+  bdRefreshUI();
+  if(location.hash==="#bend"){ try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){} }
+}
+function bdAllGroups(){ /* 표 순서: 척추세움근, 큰볼기근, 넙다리뒤근육, 배곧은근, 엉덩허리근 */
+  const g=k=>bend.groups.find(x=>x.def.key===k)||bend.proc.find(x=>x.def.key===k);
+  return ["erector","glute","ham","rect","ilio"].map(g).filter(Boolean);
+}
+function bdBuildRows(){
+  const rows=document.getElementById("bdRows"), list=bdAllGroups();
+  rows.innerHTML=list.map((g,i)=>'<tr data-i="'+i+'"><td><button class="el-name" type="button"><span class="el-sw"></span><span><b>'+g.def.ko
+    +'</b><i>'+g.def.en+'</i></span></button></td><td><span class="el-state r">이완</span></td>'
+    +'<td><span class="el-bar"><i></i></span></td><td class="el-num el-gir">100%</td><td class="el-num el-len">100%</td></tr>').join("");
+  list.forEach((g,i)=>{
+    const tr=rows.querySelector('tr[data-i="'+i+'"]');
+    g.ui={sw:tr.querySelector(".el-sw"),st:tr.querySelector(".el-state"),bar:tr.querySelector(".el-bar i"),gir:tr.querySelector(".el-gir"),len:tr.querySelector(".el-len")};
+    const b=tr.querySelector(".el-name");
+    b.title=g.def.ko+" — 기시: "+g.def.origin+" · 정지: "+g.def.insertion+" · 작용: "+g.def.action;
+    b.onclick=()=>{ if(g.sid&&sel!==g.sid) select(g.sid); };
+  });
+}
+function bdState(){ return bend.p<0.05?0:bend.p>0.95?1:2; }
+function bdUpdatePanel(){
+  const an=bend.ang, dir=bend.dir, st=bdState();
+  document.getElementById("bdPct").textContent=Math.round(bend.p*100)+"%";
+  [["bdH",an.H],["bdLu",an.Lu],["bdTh",an.Th],["bdTot",an.Tot]].forEach(([id,v])=>document.getElementById(id).textContent=Math.round(v)+"°");
+  const ph=document.getElementById("bdPhase"), en=document.getElementById("bdPhaseEn");
+  const ag=document.getElementById("bdAgonist"), sy=document.getElementById("bdSynergist"), anE=document.getElementById("bdAntagonist");
+  const X="척추세움근 · 큰볼기근 · 넙다리뒤근육";
+  if(dir>0){ ph.textContent="허리 펴기"; en.textContent="TRUNK EXTENSION";
+    ag.innerHTML=X+"<small>단축성 수축 · 짧아지고 두꺼워지며 상체를 들어 올림 (엉덩관절은 큰볼기근·넙다리뒤근육, 허리는 척추세움근)</small>";
+    sy.innerHTML="—<small>펴는 힘은 뒤쪽 근육이 모두 냄</small>";
+    anE.innerHTML="배곧은근 · 엉덩허리근<small>이완 · 몸이 펴지며 길어짐</small>"; }
+  else if(dir<0){ ph.textContent="허리 숙이기"; en.textContent="TRUNK FLEXION";
+    ag.innerHTML=X+"<small>신장성 수축 · 길어지면서도 힘을 내 상체가 천천히 내려가게 함 (숙이는 힘은 중력)</small>";
+    sy.innerHTML="배곧은근<small>숙이기 시작할 때만 약하게 작용</small>";
+    anE.innerHTML="엉덩허리근<small>대부분 이완</small>"; }
+  else if(st===0){ ph.textContent="정지 · 바로 선 자세"; en.textContent="UPRIGHT";
+    ag.innerHTML="척추세움근<small>약한 등척성 수축으로 바른 자세 유지</small>"; sy.innerHTML="큰볼기근<small>거의 이완</small>"; anE.innerHTML="배곧은근<small>이완</small>"; }
+  else if(st===1){ ph.textContent="정지 · 끝까지 숙인 자세"; en.textContent="FULL FLEXION";
+    ag.innerHTML="넙다리뒤근육<small>늘어난 상태로 당기며 골반을 붙잡음</small>";
+    sy.innerHTML="척추세움근<small>‘굴곡-이완 현상’ — 근육 활동이 거의 사라지고 인대·근막이 상체 무게를 버팀</small>";
+    anE.innerHTML="배곧은근<small>이완</small>"; }
+  else { ph.textContent="정지 · 숙인 채 유지"; en.textContent="ISOMETRIC";
+    ag.innerHTML=X+"<small>등척성 수축 · 길이 변화 없이 힘을 내 숙인 자세 유지</small>";
+    sy.innerHTML="—"; anE.innerHTML="배곧은근 · 엉덩허리근<small>이완</small>"; }
+  ph.dataset.dir=dir;
+  bdAllGroups().forEach(g=>{
+    if(!g.ui) return;
+    const on=g.act>0.4, hex="#"+g.mats[0].color.clone().convertLinearToSRGB().getHexString();
+    g.ui.st.textContent=!on?"이완":dir>0?"단축성":dir<0?"신장성":"등척성";
+    g.ui.st.className="el-state "+(on?"c":"r");
+    g.ui.bar.style.width=Math.round(g.act*100)+"%"; g.ui.bar.style.background=hex; g.ui.sw.style.background=hex;
+    g.ui.gir.textContent=Math.round(g.girth*100)+"%"; g.ui.len.textContent=Math.round(g.len*100)+"%";
+  });
+}
+function bdTick(dt){
+  const E=bend; if(!E.on) return;
+  const s=Math.min(.05,Math.max(.001,dt/1000));
+  if(E.playing){ E.phase+=s*E.speed*(Math.PI*2/6); E.p=0.5*(1-Math.cos(E.phase));
+    document.getElementById("bdSlider").value=Math.round(E.p*100); }
+  else E.p+=(E.target-E.p)*(1-Math.exp(-s*8));
+  const vel=(E.p-E.prev)/s; E.prev=E.p;
+  E.velS+=(vel-E.velS)*(1-Math.exp(-s*8));
+  E.dir=E.velS<-0.03?1:E.velS>0.03?-1:0;            /* +1 펴기(p 감소), -1 숙이기 */
+  if(!E.ready) return;
+  const an=E.ang=bdAngles(E.p), p=E.p, st=bdState(), dir=E.dir;
+  const A={erector:0,glute:0,ham:0,rect:0,ilio:0};
+  if(dir>0) Object.assign(A,{erector:.55+.4*p,glute:.45+.45*p,ham:.45+.4*p,rect:.06,ilio:.06});
+  else if(dir<0) Object.assign(A,{erector:p<.8?.45+.2*p:Math.max(.08,.61-(p-.8)*2.6),glute:.3+.35*p,ham:.35+.35*p,rect:p<.25?.3:.1,ilio:.1});
+  else if(st===0) Object.assign(A,{erector:.15,glute:.08,ham:.06,rect:.06,ilio:.05});
+  else if(st===1) Object.assign(A,{erector:.06,glute:.2,ham:.3,rect:.05,ilio:.05});
+  else Object.assign(A,{erector:.45+.3*p,glute:.3+.3*p,ham:.35+.2*p,rect:.06,ilio:.05});
+  const LEN={glute:1+0.0022*an.H, ham:1+0.0019*an.H, ilio:1-0.0017*an.H};
+  const k=1-Math.exp(-s*5); let changed=Math.abs(E.p-E.drawn)>.0005;
+  bdAllGroups().forEach(g=>{
+    const key=g.def.key, before=g.act;
+    g.act+=(A[key]-g.act)*k; if(Math.abs(g.act-before)>.002) changed=true;
+    if(LEN[key]!==undefined) g.len=LEN[key];
+    const vol=Math.min(1.12,Math.max(.9,1/Math.sqrt(g.len)));
+    g.girth=Math.min(1.5,Math.max(.82,vol*(.84+.66*g.act)));
+    const col=EL_RELAX.clone().lerp(EL_CONTRACT,Math.min(1,g.act*1.1));
+    g.mats.forEach(m=>m.color.copy(col));
+  });
+  if(changed){
+    E.groups.forEach(g=>g.meshes.forEach(d=>{ d.lenK=1+(g.len-1)*0.8; d.girth=g.girth; }));
+    bdApply(); E.drawn=E.p;
+  }
+  const now=performance.now();
+  if(now-E.lastUI>90){ bdUpdatePanel(); E.lastUI=now; }
+  if(changed&&now-E.lastBounds>500){ bdBounds(); E.lastBounds=now; }
+}
+document.getElementById("bdSlider").addEventListener("input",e=>{
+  if(!bend.on) startBend();
+  bend.target=Math.max(0,Math.min(1,(+e.target.value||0)/100));
+  if(bend.playing){ bend.playing=false; bdRefreshUI(); }
+});
+document.getElementById("bdReset").addEventListener("click",()=>{ bend.target=0; bend.playing=false; document.getElementById("bdSlider").value=0; bdRefreshUI(); });
+document.getElementById("bdClose").addEventListener("click",stopBend);
+document.getElementById("bdPlay").addEventListener("click",()=>{
+  if(!bend.on){ startBend(); return; }
+  bend.playing=!bend.playing;
+  if(bend.playing) bend.phase=Math.acos(Math.min(1,Math.max(-1,1-2*bend.p)));
+  else bend.target=bend.p;
+  bdRefreshUI();
+});
+document.querySelectorAll("#bdSpeed button").forEach(b=>b.addEventListener("click",()=>{
+  bend.speed=+b.dataset.s;
+  document.querySelectorAll("#bdSpeed button").forEach(x=>x.setAttribute("aria-pressed",(x===b)+""));
+}));
+
+/* ===================== 턱걸이 시뮬레이터 (실제 상지 GLB) =====================
+   정밀 모델 › 팔(상지)의 상지 GLB와 반투명 뼈대를 쓴다. 손바닥이 몸쪽을 향하는 턱걸이(친업)를 옆에서 본 평면 동작으로 단순화했다.
+   - 손은 봉을 잡은 채 제자리에 있고, 어깨관절(위팔뼈머리 중심)과 팔꿈치가 굽혀지며 몸 전체가 위로 올라간다.
+   - 어깨뼈·빗장뼈는 매달릴 때 올라가고(올림) 끌어올릴 때 내려간다(내림).
+   - 근육·신경·혈관은 정점마다 가장 가까운 뼈(몸통·어깨뼈·위팔뼈)와의 거리로 가중치를 정해 함께 늘어나고 휜다.
+   - 근육 길이는 관절 각도와 모멘트팔로 계산하고, 굵기·색은 길이와 활성도에서 계산한다.
+   교육용 시각화이며, 관절 각도·근육 활성도·굵기 수치는 모식적 추정값이다. */
+const PU_GROUPS=[
+ {key:"lat",role:"ag",ko:"넓은등근",en:"Latissimus dorsi",re:/^latissimus dorsi$/i,
+  origin:"아래쪽 등뼈·허리뼈 가시돌기, 엉덩뼈능선, 아래쪽 갈비뼈",insertion:"위팔뼈 결절사이고랑",action:"어깨 폄·모음 — 올린 팔을 끌어내려 몸을 들어 올림"},
+ {key:"teres",role:"ag",ko:"큰원근",en:"Teres major",re:/^teres major muscle$/i,
+  origin:"어깨뼈 아래각 뒷면",insertion:"위팔뼈 작은결절능선",action:"어깨 폄·모음 — 넓은등근을 도움"},
+ {key:"bic",role:"ag",ko:"위팔두갈래근",en:"Biceps brachii",re:/^(long|short) head of biceps brachii$/i,
+  origin:"어깨뼈 관절위결절·부리돌기",insertion:"노뼈거친면",action:"팔꿈치 굽힘, 아래팔 뒤침 — 손바닥이 몸쪽인 턱걸이에서 크게 작용"},
+ {key:"brach",role:"ag",ko:"위팔근",en:"Brachialis",re:/^brachialis muscle$/i,
+  origin:"위팔뼈 앞면 아래쪽 절반",insertion:"자뼈거친면",action:"팔꿈치 굽힘"},
+ {key:"pec",role:"syn",ko:"큰가슴근 (복장갈비 부분)",en:"Pectoralis major · sternocostal",re:/^(sternocostal head of pectoralis major muscle|abdominal head of pectoralis major muscle)$/i,
+  origin:"복장뼈·위쪽 갈비연골·배곧은근집",insertion:"위팔뼈 큰결절능선",action:"높이 올린 팔을 끌어내림(어깨 폄)"},
+ {key:"brr",role:"syn",ko:"위팔노근",en:"Brachioradialis",re:/^brachioradialis muscle$/i,
+  origin:"위팔뼈 가쪽관절융기위능선",insertion:"노뼈 붓돌기",action:"팔꿈치 굽힘 보조"},
+ {key:"ltrap",role:"syn",ko:"등세모근 (오름 부분)",en:"Trapezius · ascending",re:/^ascending part of trapezius muscle$/i,
+  origin:"아래쪽 등뼈 가시돌기",insertion:"어깨뼈가시 안쪽 끝",action:"어깨뼈 내림 — 어깨가 귀 쪽으로 딸려 올라가지 않게 끌어내림"},
+ {key:"pdelt",role:"syn",ko:"어깨세모근 (뒤부분)",en:"Deltoid · posterior",re:/^spinal part of deltoid muscle$/i,
+  origin:"어깨뼈가시",insertion:"위팔뼈 세모근거친면",action:"어깨 폄 — 팔을 뒤·아래로 당김"},
+ {key:"adelt",role:"ant",ko:"어깨세모근 (앞부분)",en:"Deltoid · anterior",re:/^clavicular part of deltoid muscle$/i,
+  origin:"빗장뼈 가쪽 1/3",insertion:"위팔뼈 세모근거친면",action:"어깨 굽힘 — 팔을 앞·위로 올림"},
+ {key:"tri",role:"ant",ko:"위팔세갈래근",en:"Triceps brachii",re:/^(long|lateral|medial) head of triceps brachii$/i,
+  origin:"어깨뼈 관절아래결절·위팔뼈 뒷면",insertion:"자뼈 팔꿈치머리",action:"팔꿈치 폄 (긴갈래는 어깨 폄 보조)"}
+];
+/* 근육-힘줄 길이 모식: 매달린 자세의 길이 L0(m)에서 ΔL = as·Δ어깨굽힘 + ae·Δ팔꿈치굽힘(라디안) + asc·Δ어깨뼈올림(m) */
+const PU_LEN={lat:{L0:.40,as:.035,asc:1},teres:{L0:.15,as:.015},bic:{L0:.36,as:-.015,ae:-.035},brach:{L0:.16,ae:-.02},
+  pec:{L0:.22,as:.03},brr:{L0:.28,ae:-.04},ltrap:{L0:.17,asc:1},pdelt:{L0:.16,as:.015},adelt:{L0:.15,as:-.02},tri:{L0:.30,as:.01,ae:.02}};
+function puLen(key,an){ const c=PU_LEN[key], a0=puAngles(0);
+  return (c.L0+(c.as||0)*deg(an.S-a0.S)+(c.ae||0)*deg(an.E-a0.E)+(c.asc||0)*(an.sc-a0.sc))/c.L0; }
+const pull={on:false,ready:false,failed:false,playing:false,p:0,target:0,phase:0,speed:1,prev:0,velS:0,dir:0,
+  root:null,gh:null,ep:null,K:null,grip:null,bar:null,tr0:null,barMesh:null,rigid:[],deform:[],groups:[],drawn:-1,lastBounds:0,lastUI:0,
+  ang:{S:165,E:8,B:0,sc:0.03},F:null,rise:0};
+/* 올라간 정도 p(0=매달린 자세, 1=턱이 봉 위) → 어깨 굽힘 S, 팔꿈치 굽힘 E, 몸통 뒤로 기울기 B(도), 어깨뼈 올림 sc(m) */
+function puAngles(p){
+  return {S:165-147*p, E:8+132*(1-Math.pow(1-p,1.25)), B:10*Math.sin(Math.PI*p)+12*p, sc:0.03-0.04*p};
+}
+const PU_X=new T.Vector3(-1,0,0);   /* 이 축으로 +각도 회전하면 아래를 향한 팔이 앞(+z)으로 올라간다 */
+function puRot(c,ax,a){
+  return new T.Matrix4().makeTranslation(c.x,c.y,c.z).multiply(new T.Matrix4().makeRotationAxis(ax,a)).multiply(new T.Matrix4().makeTranslation(-c.x,-c.y,-c.z));
+}
+/* 구 맞춤(최소제곱): |p|² = 2c·p + k */
+function puSphere(pts){
+  const A=[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]], b=[0,0,0,0];
+  pts.forEach(p=>{ const r=[2*p.x,2*p.y,2*p.z,1], v=p.lengthSq();
+    for(let i=0;i<4;i++){ b[i]+=r[i]*v; for(let j=0;j<4;j++) A[i][j]+=r[i]*r[j]; } });
+  for(let i=0;i<4;i++){ let m=i; for(let k=i+1;k<4;k++) if(Math.abs(A[k][i])>Math.abs(A[m][i])) m=k;
+    [A[i],A[m]]=[A[m],A[i]]; [b[i],b[m]]=[b[m],b[i]];
+    for(let k=i+1;k<4;k++){ const f=A[k][i]/A[i][i]; for(let j=i;j<4;j++) A[k][j]-=f*A[i][j]; b[k]-=f*b[i]; } }
+  const x=[0,0,0,0]; for(let i=3;i>=0;i--){ let s=b[i]; for(let j=i+1;j<4;j++) s-=A[i][j]*x[j]; x[i]=s/A[i][i]; }
+  const c=new T.Vector3(x[0],x[1],x[2]); return {c:c,r:Math.sqrt(Math.max(0,x[3]+c.lengthSq()))};
+}
+/* 뼈 무리(몸통·어깨뼈·팔)까지의 거리장. h 간격 격자에서 계산하고 정점은 삼선형 보간으로 읽는다 */
+function puField(groups,box,h){
+  const o=box.min, nx=Math.ceil((box.max.x-o.x)/h)+1, ny=Math.ceil((box.max.y-o.y)/h)+1, nz=Math.ceil((box.max.z-o.z)/h)+1;
+  const F=groups.map(pts=>{
+    const P=new Float32Array(pts.length*3); pts.forEach((p,i)=>{P[i*3]=p.x;P[i*3+1]=p.y;P[i*3+2]=p.z;});
+    const out=new Float32Array(nx*ny*nz), n=pts.length;
+    for(let k=0;k<nz;k++){ const z=o.z+k*h;
+      for(let j=0;j<ny;j++){ const y=o.y+j*h;
+        for(let i=0;i<nx;i++){ const x=o.x+i*h; let m=1e9;
+          for(let q=0;q<n;q++){ const dx=P[q*3]-x, dy=P[q*3+1]-y, dz=P[q*3+2]-z, d=dx*dx+dy*dy+dz*dz; if(d<m) m=d; }
+          out[(k*ny+j)*nx+i]=Math.sqrt(m); } } }
+    return out;
+  });
+  return {o:o,h:h,nx:nx,ny:ny,nz:nz,F:F};
+}
+function puSample(fd,g,p){
+  const fx=Math.min(fd.nx-1.001,Math.max(0,(p.x-fd.o.x)/fd.h)), fy=Math.min(fd.ny-1.001,Math.max(0,(p.y-fd.o.y)/fd.h)), fz=Math.min(fd.nz-1.001,Math.max(0,(p.z-fd.o.z)/fd.h));
+  const i=fx|0,j=fy|0,k=fz|0,u=fx-i,v=fy-j,w=fz-k,F=fd.F[g],nx=fd.nx,ny=fd.ny, at=(a,b,c)=>F[(c*ny+b)*nx+a];
+  const c00=at(i,j,k)*(1-u)+at(i+1,j,k)*u, c10=at(i,j+1,k)*(1-u)+at(i+1,j+1,k)*u, c01=at(i,j,k+1)*(1-u)+at(i+1,j,k+1)*u, c11=at(i,j+1,k+1)*(1-u)+at(i+1,j+1,k+1)*u;
+  return (c00*(1-v)+c10*v)*(1-w)+(c01*(1-v)+c11*v)*w;
+}
+function puSetup(){
+  const root=realCache["d-upper"]; if(!root) return false;
+  if(pull.root===root&&pull.ready) return true;
+  if(!realElbowSetup()) return false;                 /* 팔꿈치 관절 중심·굽힘 축은 팔꿈치 시뮬레이터와 같은 방법으로 구한다 */
+  const meshes=[]; root.traverse(o=>{ if(o.isMesh) meshes.push(o); });
+  const nm=o=>o.userData.anatomyName||"", isUL=o=>o.userData.anatomyFile==="upper-limb";
+  const ctx=meshes.filter(o=>o.userData.ctx);
+  const side=Math.sign(elCenter(realElbow.muscles.slice(0,2).map(m=>m.o)).x)||1;
+  const sameSide=o=>{ const c=elCenter([o]); return c&&Math.sign(c.x)===side; };
+  const humerus=ctx.find(o=>/^humerus$/i.test(nm(o))&&sameSide(o));
+  const girdle=ctx.filter(o=>/^(scapula|clavicle)$/i.test(nm(o))&&sameSide(o));
+  const fore=ctx.filter(o=>FOREARM_BONE.test(nm(o))&&!/of foot/i.test(nm(o))&&sameSide(o));
+  const fingers=fore.filter(o=>/^proximal phalanx of (2d|3rd|4th|5th) finger$/i.test(nm(o)));
+  if(!humerus||girdle.length<2||fore.length<4||fingers.length<2){ console.warn("[턱걸이] 어깨·팔 뼈를 찾지 못했습니다"); return false; }
+  /* 1) 어깨관절 중심: 위팔뼈머리(위쪽 5 cm 중 안쪽 절반)에 구를 맞춘다 */
+  const A=realElbow.armAxis, hp=elPoints(humerus,1), hc=elPCA(hp).c;
+  let top=-Infinity; hp.forEach(p=>{top=Math.max(top,p.clone().sub(hc).dot(A));});
+  const cap=hp.filter(p=>p.clone().sub(hc).dot(A)>top-0.05), mx=cap.map(p=>-side*p.x).sort((a,b)=>a-b)[cap.length>>1];
+  const sph=puSphere(cap.filter(p=>-side*p.x>=mx));
+  if(!(sph.r>0.012&&sph.r<0.04)){ console.warn("[턱걸이] 위팔뼈머리 맞춤 실패",sph.r); return false; }
+  const gh=sph.c;
+  /* 2) 손아귀 위치: 둘째~다섯째 손가락 첫마디뼈 중심 */
+  const grip=elCenter(fingers);
+  /* 3) 반투명 뼈대 분절: 0 몸통(나머지 전부), 1 어깨뼈·빗장뼈, 2 위팔뼈, 3 아래팔·손 */
+  const rigid=ctx.map(o=>({o:o,base:o.matrix.clone(),seg:o===humerus?2:girdle.indexOf(o)>=0?1:fore.indexOf(o)>=0?3:0}));
+  /* 4) 거리장: 상지 모델이 차지하는 공간을 2 cm 격자로 나눠 몸통·어깨뼈·팔(위팔+아래팔+손) 뼈까지의 거리를 잰다 */
+  const ul=meshes.filter(isUL), box=new T.Box3();
+  ul.forEach(o=>{ if(!o.geometry.boundingBox) o.geometry.computeBoundingBox(); box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrix)); });
+  box.expandByScalar(0.03);
+  const near=box.clone().expandByScalar(0.08);
+  const sample=(list,target)=>{ let n=0; list.forEach(o=>n+=o.geometry.attributes.position.count); const st=Math.max(1,Math.round(n/target));
+    const out=[]; list.forEach(o=>elPoints(o,st).forEach(p=>{ if(near.containsPoint(p)) out.push(p); })); return out; };
+  const trunk=ctx.filter(o=>rigid.find(r=>r.o===o).seg===0);
+  /* 어깨 둘레 근육(넓은등근·큰가슴근 등)은 위팔뼈 위쪽 2/3에만 붙으므로, 팔을 몸 옆에 내린 원래 자세에서 가까이 있는
+     아래팔·손에 잘못 끌려가지 않도록 위팔뼈 위쪽만 따로 거리장을 만든다 */
+  const hprox=elPoints(humerus,2).filter(p=>p.clone().sub(realElbow.pivot).dot(A)>0.1);
+  const fd=puField([sample(trunk,2600),sample(girdle,700),sample([humerus].concat(fore),1600),hprox],box,0.02);
+  /* 5) 정점별 가중치 */
+  const pe=realElbow.pivot, K=realElbow.axis;
+  const bicC=elCenter(realElbow.muscles.slice(0,2).map(m=>m.o)), ant=bicC.clone().sub(pe); ant.addScaledVector(A,-ant.dot(A)).normalize();
+  const sOf=p=>{const d=p.clone().sub(pe); return d.dot(A)+0.6*Math.min(0,d.dot(ant));}, BE=0.018, SIG=0.01;
+  const deform=ul.map(o=>{
+    const g=PU_GROUPS.find(r=>r.re.test(nm(o))), armF=/^(pectoral girdle|thorax) -/i.test(o.userData.anatomyGroup||"")?3:2;
+    const base=o.matrix.clone(), geo0=o.geometry, geo=geo0.clone(); geo.applyMatrix4(base);
+    if(!geo.attributes.normal) geo.computeVertexNormals();
+    const pa=geo.attributes.position, n=pa.count, P0=Float32Array.from(pa.array), N0=Float32Array.from(geo.attributes.normal.array);
+    const TT=new Float32Array(n), WE=new Float32Array(n), LB=new Float32Array(n), W0=new Float32Array(n), W1=new Float32Array(n), pts=[];
+    for(let i=0;i<n;i++){
+      const p=new T.Vector3(P0[i*3],P0[i*3+1],P0[i*3+2]); pts.push(p);
+      const d0=puSample(fd,0,p), d1=puSample(fd,1,p), d2=puSample(fd,armF,p), m=Math.min(d0,d1,d2);
+      let w0=Math.exp(-(d0-m)/SIG), w1=Math.exp(-(d1-m)/SIG), w2=Math.exp(-(d2-m)/SIG); const s=w0+w1+w2; w0/=s; w1/=s; w2/=s;
+      W0[i]=w0; W1[i]=w1; TT[i]=w1+2*w2;
+      const e=Math.min(1,Math.max(0,(BE-sOf(p))/(2*BE))); WE[i]=armF===2?e*e*(3-2*e)*w2:0;   /* 팔꿈치 아래쪽이라도 몸통에 붙은 정점은 팔꿈치를 따라가지 않음 */
+      const r=Math.min(1,Math.max(0,(p.distanceTo(gh)-0.07)/0.08)); LB[i]=r*r*(3-2*r);   /* 어깨에서 먼 정점은 위치를 선형으로 섞어 근육이 곧게 늘어나게 함 */
+    }
+    const d={o:o,base:base,geo0:geo0,geo:geo,P0:P0,N0:N0,T:TT,WE:WE,LB:LB,W0:W0,W1:W1,muscle:g||null,girth:1};
+    if(g){
+      /* 굵기: 근육 배(가운데) 부분을 표면의 바깥 방향(법선)으로 부풀린다. 반지름은 근육 단면 크기에서 정하되 2 cm를 넘지 않게 해
+         넓고 납작한 근육(넓은등근 등)도 두께만 늘어나게 한다 */
+      const pca=elPCA(pts), M=pca.v, C=pca.c; let a0=Infinity,a1=-Infinity, rr=0;
+      pts.forEach(p=>{const v=p.clone().sub(C), a=v.dot(M); a0=Math.min(a0,a); a1=Math.max(a1,a); rr+=v.lengthSq()-a*a;});
+      const R=Math.min(0.018,Math.sqrt(rr/n)), DR=new Float32Array(n*3);
+      for(let i=0;i<n;i++){
+        const u=(pts[i].clone().sub(C).dot(M)-a0)/((a1-a0)||1), k=R*Math.pow(Math.sin(Math.PI*Math.min(1,Math.max(0,u))),0.9);
+        DR[i*3]=N0[i*3]*k; DR[i*3+1]=N0[i*3+1]*k; DR[i*3+2]=N0[i*3+2]*k;
+      }
+      d.DR=DR;
+    }
+    return d;
+  });
+  pull.root=root; pull.gh=gh; pull.ep=pe; pull.K=K; pull.grip=grip; pull.side=side; pull.rigid=rigid; pull.deform=deform;
+  pull.groups=PU_GROUPS.map(g=>{
+    const ms=deform.filter(d=>d.muscle===g), mats=[...new Set(ms.map(d=>d.o.userData.mat0||d.o.material))];
+    return {def:g,meshes:ms,mats:mats,color0:mats.map(m=>m.color.clone()),sid:ms.length?ms[0].o.userData.id:null,act:0,len:1,girth:1};
+  }).filter(g=>g.meshes.length);
+  /* 봉 위치: 매달린 자세(p=0)에서의 손아귀 위치(발이 바닥에서 조금 뜨도록 5 cm 위) */
+  pull.bar=null; const f0=puFrames(puAngles(0)); pull.bar=f0.hand.clone().add(new T.Vector3(0,0.05,0));
+  pull.tr0=puFrames(puAngles(0)).tr.clone();
+  const L=Math.max(0.5,Math.abs(pull.bar.x)+0.25);
+  const bg=new T.CylinderGeometry(0.014,0.014,2*L,28); bg.rotateZ(Math.PI/2);
+  const bm=new T.Mesh(bg,new T.MeshStandardMaterial({color:0x8d939b,roughness:.32,metalness:.75,envMapIntensity:.6}));
+  bm.position.set(0,pull.bar.y,pull.bar.z); bm.castShadow=true; pull.barMesh=bm;
+  pull.ready=true; pull.drawn=-1;
+  return true;
+}
+/* 분절 행렬 [몸통, 어깨뼈, 위팔, 아래팔·손]. 손아귀가 봉에 고정되도록 몸 전체를 옮긴다(좌우 이동은 하지 않음) */
+function puFrames(an){
+  const c=pull.gh;
+  const M0=puRot(c,PU_X,-deg(an.B));                                         /* 몸통을 뒤로 기울임 */
+  const M1=M0.clone().multiply(new T.Matrix4().makeTranslation(0,an.sc,0));   /* 어깨뼈 올림·내림 */
+  const M2=M1.clone().multiply(puRot(c,PU_X,deg(an.S)));                       /* 어깨 굽힘 */
+  const M3=M2.clone().multiply(puRot(pull.ep,pull.K,deg(an.E)));               /* 팔꿈치 굽힘 */
+  const hand=pull.grip.clone().applyMatrix4(M3);
+  const tr=pull.bar?pull.bar.clone().sub(hand):new T.Vector3(); tr.x=0;
+  const Tm=new T.Matrix4().makeTranslation(tr.x,tr.y,tr.z);
+  return {M:[M0,M1,M2,M3].map(m=>Tm.clone().multiply(m)),tr:tr,hand:hand.add(tr)};
+}
+function puApply(){
+  const an=pull.ang, F=puFrames(an); pull.F=F;
+  pull.rise=pull.tr0?F.tr.y-pull.tr0.y:0;
+  pull.rigid.forEach(r=>r.o.matrix.multiplyMatrices(F.M[r.seg],r.base));
+  const E0=F.M[0].elements, E1=F.M[1].elements, E2=F.M[2].elements;
+  const c=pull.gh, cy=c.y, cz=c.z, th=deg(an.S), sc=an.sc, pe=pull.ep, K=pull.K, kx=K.x,ky=K.y,kz=K.z, te=deg(an.E);
+  const ce=Math.cos(te), se=Math.sin(te), cg=Math.cos(th), sg=Math.sin(th);
+  pull.deform.forEach(d=>{
+    const P=d.geo.attributes.position.array, N=d.geo.attributes.normal.array, P0=d.P0, N0=d.N0, TT=d.T, WE=d.WE, LB=d.LB, W0=d.W0, W1=d.W1, n=TT.length;
+    const gk=d.muscle?d.girth-1:0, DR=d.DR;
+    for(let i=0;i<n;i++){
+      const j=i*3;
+      let x=P0[j],y=P0[j+1],z=P0[j+2], nx=N0[j],ny=N0[j+1],nz=N0[j+2];
+      if(DR){ x+=DR[j]*gk; y+=DR[j+1]*gk; z+=DR[j+2]*gk; }
+      /* 팔꿈치: 아래팔 쪽 가중치만큼 굽힘 축으로 회전 */
+      const we=WE[i];
+      if(we>0){ let c1=ce,s1=se; if(we<1){ const a=te*we; c1=Math.cos(a); s1=Math.sin(a); }
+        const vx=x-pe.x, vy=y-pe.y, vz=z-pe.z, kd=(kx*vx+ky*vy+kz*vz)*(1-c1);
+        x=pe.x+vx*c1+(ky*vz-kz*vy)*s1+kx*kd; y=pe.y+vy*c1+(kz*vx-kx*vz)*s1+ky*kd; z=pe.z+vz*c1+(kx*vy-ky*vx)*s1+kz*kd;
+        const nd=(kx*nx+ky*ny+kz*nz)*(1-c1), mx=nx*c1+(ky*nz-kz*ny)*s1+kx*nd, my=ny*c1+(kz*nx-kx*nz)*s1+ky*nd, mz=nz*c1+(kx*ny-ky*nx)*s1+kz*nd;
+        nx=mx; ny=my; nz=mz; }
+      /* 어깨: 사슬을 따라 몸통 → 어깨뼈 → 위팔로 이어지는 가중치(회전은 위팔뼈머리 중심) */
+      const t=TT[i]; let e, rx=x, ry=y, rz=z, sx=nx, sy=ny, sz=nz;
+      if(t<=1){ ry=y+t*sc; e=E0; }
+      else { let c2=cg,s2=sg; if(t<2){ const a=th*(t-1); c2=Math.cos(a); s2=Math.sin(a); }
+        const vy=y-cy, vz=z-cz; ry=cy+vy*c2+vz*s2; rz=cz-vy*s2+vz*c2;            /* -x 축 회전 */
+        const my=ny*c2+nz*s2, mz=-ny*s2+nz*c2; sy=my; sz=mz; e=E1; }
+      let px=e[0]*rx+e[4]*ry+e[8]*rz+e[12], py=e[1]*rx+e[5]*ry+e[9]*rz+e[13], pz=e[2]*rx+e[6]*ry+e[10]*rz+e[14];
+      const lb=LB[i];
+      if(lb>0){
+        const w0=W0[i], w1=W1[i], w2=1-w0-w1;
+        const qx=w0*(E0[0]*x+E0[4]*y+E0[8]*z+E0[12])+w1*(E1[0]*x+E1[4]*y+E1[8]*z+E1[12])+w2*(E2[0]*x+E2[4]*y+E2[8]*z+E2[12]);
+        const qy=w0*(E0[1]*x+E0[5]*y+E0[9]*z+E0[13])+w1*(E1[1]*x+E1[5]*y+E1[9]*z+E1[13])+w2*(E2[1]*x+E2[5]*y+E2[9]*z+E2[13]);
+        const qz=w0*(E0[2]*x+E0[6]*y+E0[10]*z+E0[14])+w1*(E1[2]*x+E1[6]*y+E1[10]*z+E1[14])+w2*(E2[2]*x+E2[6]*y+E2[10]*z+E2[14]);
+        px+=(qx-px)*lb; py+=(qy-py)*lb; pz+=(qz-pz)*lb;
+      }
+      P[j]=px; P[j+1]=py; P[j+2]=pz;
+      N[j]=e[0]*sx+e[4]*sy+e[8]*sz; N[j+1]=e[1]*sx+e[5]*sy+e[9]*sz; N[j+2]=e[2]*sx+e[6]*sy+e[10]*sz;
+    }
+    d.geo.attributes.position.needsUpdate=true; d.geo.attributes.normal.needsUpdate=true;
+  });
+}
+function puSwap(on){
+  pull.deform.forEach(d=>{ d.o.geometry=on?d.geo:d.geo0; d.o.matrix.copy(on?new T.Matrix4():d.base); d.o.matrixAutoUpdate=false; d.o.frustumCulled=!on; });
+  if(on){ if(pull.barMesh&&!pull.barMesh.parent) pull.root.add(pull.barMesh); }
+  else{
+    pull.rigid.forEach(r=>r.o.matrix.copy(r.base));
+    pull.groups.forEach(g=>g.mats.forEach((m,i)=>m.color.copy(g.color0[i])));
+    if(pull.barMesh&&pull.barMesh.parent) pull.barMesh.parent.remove(pull.barMesh);
+  }
+}
+function puBounds(){ pull.deform.forEach(d=>{ d.geo.computeBoundingSphere(); d.geo.computeBoundingBox(); }); }
+function puRefreshUI(){
+  const on=pull.on;
+  document.getElementById("realPull").setAttribute("aria-pressed",on+"");
+  document.getElementById("pullPanel").classList.toggle("on",on);
+  document.getElementById("pullcard").hidden=!on;
+  const sb=document.getElementById("pullEntry"); if(sb) sb.setAttribute("aria-pressed",on+"");
+  document.getElementById("puPlay").textContent=pull.playing?"Ⅱ 일시정지":"▶ 자동 움직임";
+  document.getElementById("puPlay").setAttribute("aria-pressed",pull.playing+"");
+  const note=document.getElementById("realisticNote");
+  if(on) note.textContent="턱걸이 시뮬레이터 · 실제 상지 GLB";
+  note.hidden=!(on||realElbow.on||squat.on||bend.on);
+}
+function startPull(){
+  if(pull.on) return;
+  if(realElbow.on) stopRealElbow();
+  pull.on=true; pull.failed=false;
+  pull.playing=!reduce; pull.p=0; pull.target=0; pull.phase=0; pull.prev=0; pull.velS=0;
+  if(sysId!=="d-upper"||mode!=="learn"){ sysId="d-upper"; mode="learn"; sel=null; quiz.q=null; moveState.playing=false;
+    document.getElementById("listcard").hidden=false; refresh(true); }
+  puRefreshUI();
+  try{ history.replaceState(null,"","#pullup"); }catch(e){}
+  document.getElementById("puHint").textContent="실제 상지 모델을 불러오는 중…";
+  const wait=()=>{
+    if(!pull.on) return;
+    if(REAL_VIEWS["d-upper"].failed||!GLB_OK){ puFail("실제 상지 모델을 불러오지 못해 시뮬레이터를 실행할 수 없습니다."); return; }
+    if(!realCache["d-upper"]){ setTimeout(wait,150); return; }
+    if(!pull.ready) document.getElementById("puHint").textContent="근육과 뼈의 연결을 계산하는 중…";
+    setTimeout(()=>{
+      if(!pull.on) return;
+      if(!puSetup()){ puFail("모델에서 어깨·팔 구조를 찾지 못했습니다."); return; }
+      puSwap(true); pull.drawn=-1; pull.ang=puAngles(pull.p); puApply(); puBounds(); mirrorBuild(pull.root);
+      document.getElementById("puHint").textContent="슬라이더로 올라간 정도를 바꾸거나 자동 움직임을 재생하세요. 화면을 끌면 앞·옆에서도 볼 수 있습니다.";
+      puBuildRows();
+      const bw=new T.Vector3(0,pull.bar.y-0.9,0).applyMatrix4(pull.root.matrixWorld);   /* 봉부터 발끝까지 전신 */
+      flyTo(bw,38,-2.65*(pull.side<0?1:-1),1.45);
+    },30);
+  };
+  wait();
+}
+function puFail(msg){ pull.failed=true; pull.playing=false; document.getElementById("puHint").textContent=msg; puRefreshUI(); }
+function stopPull(){
+  if(!pull.on) return;
+  pull.on=false; pull.playing=false;
+  mirrorClear();
+  if(pull.ready){ puSwap(false); puBounds(); }
+  puRefreshUI();
+  if(location.hash==="#pullup"){ try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){} }
+}
+function puBuildRows(){
+  const rows=document.getElementById("puRows"); let r0="";
+  const head={ag:"주동근 · Prime movers",syn:"협력근 · Synergists",ant:"길항근 · Antagonists"};
+  rows.innerHTML=pull.groups.map((g,i)=>{
+    const h=g.def.role!==r0?'<tr class="el-grp"><td colspan="5">'+head[g.def.role]+"</td></tr>":""; r0=g.def.role;
+    return h+'<tr data-i="'+i+'"><td><button class="el-name" type="button"><span class="el-sw"></span><span><b>'+g.def.ko
+    +'</b><i>'+g.def.en+'</i></span></button></td><td><span class="el-state r">이완</span></td>'
+    +'<td><span class="el-bar"><i></i></span></td><td class="el-num el-gir">100%</td><td class="el-num el-len">100%</td></tr>'; }).join("");
+  pull.groups.forEach((g,i)=>{
+    const tr=rows.querySelector('tr[data-i="'+i+'"]');
+    g.ui={sw:tr.querySelector(".el-sw"),st:tr.querySelector(".el-state"),bar:tr.querySelector(".el-bar i"),gir:tr.querySelector(".el-gir"),len:tr.querySelector(".el-len")};
+    const b=tr.querySelector(".el-name");
+    b.title=g.def.ko+" — 기시: "+g.def.origin+" · 정지: "+g.def.insertion+" · 작용: "+g.def.action;
+    b.onclick=()=>{ if(g.sid&&sel!==g.sid) select(g.sid); };
+  });
+}
+function puState(){ return pull.p<0.05?0:pull.p>0.95?1:2; }
+function puUpdatePanel(){
+  const an=pull.ang, dir=pull.dir, st=puState();
+  document.getElementById("puPct").textContent=Math.round(pull.p*100)+"%";
+  document.getElementById("puS").textContent=Math.round(an.S)+"°";
+  document.getElementById("puE").textContent=Math.round(an.E)+"°";
+  document.getElementById("puRise").textContent=Math.round(pull.rise*100)+"cm";
+  document.getElementById("puLean").textContent=Math.round(an.B)+"°";
+  const ph=document.getElementById("puPhase"), en=document.getElementById("puPhaseEn");
+  const ag=document.getElementById("puAgonist"), sy=document.getElementById("puSynergist"), anE=document.getElementById("puAntagonist");
+  const AG="넓은등근 · 큰원근 · 위팔두갈래근 · 위팔근", SY="큰가슴근(복장갈비 부분) · 위팔노근 · 등세모근(오름 부분) · 어깨세모근(뒤부분)", AN="어깨세모근(앞부분) · 위팔세갈래근";
+  if(dir>0){ ph.textContent="끌어올리기"; en.textContent="PULL · CONCENTRIC";
+    ag.innerHTML=AG+"<small>단축성 수축 · 짧아지고 두꺼워지며 팔을 끌어내리고(어깨 폄) 팔꿈치를 굽혀 몸을 들어 올림</small>";
+    sy.innerHTML=SY+"<small>어깨 폄·팔꿈치 굽힘을 돕고, 어깨뼈를 아래·안쪽으로 끌어당겨 고정</small>";
+    anE.innerHTML=AN+"<small>이완 · 반대 방향 근육이라 길어지며 움직임을 허용</small>"; }
+  else if(dir<0){ ph.textContent="천천히 내려가기"; en.textContent="LOWER · ECCENTRIC";
+    ag.innerHTML=AG+"<small>신장성 수축 · 길어지면서도 힘을 내 몸이 천천히 내려가게 함 (내리는 힘은 중력)</small>";
+    sy.innerHTML=SY+"<small>함께 길어지며 속도를 조절</small>";
+    anE.innerHTML=AN+"<small>이완 · 다시 짧아짐</small>"; }
+  else if(st===0){ ph.textContent="정지 · 매달리기"; en.textContent="DEAD HANG";
+    ag.innerHTML="등세모근(오름 부분) · 넓은등근<small>약한 등척성 수축 · 어깨가 귀 쪽으로 빠지지 않게 붙잡음 (손아귀는 아래팔의 손가락 굽힘근)</small>";
+    sy.innerHTML="위팔두갈래근 · 위팔근<small>거의 이완 · 팔꿈치가 거의 펴져 있음</small>";
+    anE.innerHTML=AN+"<small>이완</small>"; }
+  else if(st===1){ ph.textContent="정지 · 턱이 봉 위"; en.textContent="TOP HOLD";
+    ag.innerHTML="위팔두갈래근 · 위팔근 · 넓은등근<small>등척성 수축 · 길이 변화 없이 힘을 내 몸을 봉 높이에 붙잡음</small>";
+    sy.innerHTML="큰원근 · 등세모근(오름 부분)<small>어깨뼈를 아래로 당겨 고정</small>";
+    anE.innerHTML=AN+"<small>이완</small>"; }
+  else { ph.textContent="정지 · 중간에서 버티기"; en.textContent="ISOMETRIC";
+    ag.innerHTML=AG+"<small>등척성 수축 · 길이 변화 없이 힘을 내 자세 유지</small>";
+    sy.innerHTML=SY+"<small>자세 유지를 도움</small>"; anE.innerHTML=AN+"<small>이완</small>"; }
+  ph.dataset.dir=dir;
+  pull.groups.forEach(g=>{
+    if(!g.ui) return;
+    const on=g.act>0.4, hex="#"+g.mats[0].color.clone().convertLinearToSRGB().getHexString();
+    g.ui.st.textContent=!on?"이완":dir>0?"단축성":dir<0?"신장성":"등척성";
+    g.ui.st.className="el-state "+(on?"c":"r");
+    g.ui.bar.style.width=Math.round(g.act*100)+"%"; g.ui.bar.style.background=hex; g.ui.sw.style.background=hex;
+    g.ui.gir.textContent=Math.round(g.girth*100)+"%"; g.ui.len.textContent=Math.round(g.len*100)+"%";
+  });
+}
+function puTick(dt){
+  const E=pull; if(!E.on) return;
+  const s=Math.min(.05,Math.max(.001,dt/1000));
+  if(E.playing){ E.phase+=s*E.speed*(Math.PI*2/5); E.p=0.5*(1-Math.cos(E.phase));
+    document.getElementById("puSlider").value=Math.round(E.p*100); }
+  else E.p+=(E.target-E.p)*(1-Math.exp(-s*8));
+  const vel=(E.p-E.prev)/s; E.prev=E.p;
+  E.velS+=(vel-E.velS)*(1-Math.exp(-s*8));
+  E.dir=E.velS>0.03?1:E.velS<-0.03?-1:0;            /* +1 끌어올리기, -1 내려가기 */
+  if(!E.ready) return;
+  E.ang=puAngles(E.p); const p=E.p, st=puState(), dir=E.dir;
+  let A;
+  if(dir>0) A={lat:.9,teres:.78,bic:.6+.35*p,brach:.65+.3*p,pec:.2+.45*(1-p),brr:.45+.3*p,ltrap:.62,pdelt:.45+.25*p,adelt:.06,tri:.14};
+  else if(dir<0) A={lat:.62,teres:.52,bic:.45+.25*p,brach:.5+.25*p,pec:.15+.3*(1-p),brr:.35+.2*p,ltrap:.45,pdelt:.35+.15*p,adelt:.05,tri:.1};
+  else if(st===0) A={lat:.22,teres:.15,bic:.1,brach:.1,pec:.1,brr:.12,ltrap:.32,pdelt:.08,adelt:.05,tri:.06};
+  else if(st===1) A={lat:.6,teres:.5,bic:.82,brach:.86,pec:.22,brr:.6,ltrap:.5,pdelt:.4,adelt:.05,tri:.15};
+  else A={lat:.66,teres:.55,bic:.6,brach:.66,pec:.35,brr:.45,ltrap:.5,pdelt:.45,adelt:.05,tri:.1};
+  const k=1-Math.exp(-s*5); let changed=Math.abs(E.p-E.drawn)>.0005;
+  E.groups.forEach(g=>{
+    const before=g.act; g.act+=(A[g.def.key]-g.act)*k; if(Math.abs(g.act-before)>.002) changed=true;
+    g.len=puLen(g.def.key,E.ang);
+    const vol=Math.min(1.12,Math.max(.9,1/Math.sqrt(g.len)));
+    g.girth=Math.min(1.5,Math.max(.8,vol*(.84+.66*g.act)));
+    const col=EL_RELAX.clone().lerp(EL_CONTRACT,Math.min(1,g.act*1.1));
+    g.mats.forEach(m=>m.color.copy(col));
+  });
+  if(changed){
+    E.groups.forEach(g=>g.meshes.forEach(d=>{ d.girth=g.girth; }));
+    puApply(); E.drawn=E.p;
+  }
+  const now=performance.now();
+  if(now-E.lastUI>90){ puUpdatePanel(); E.lastUI=now; }
+  if(changed&&now-E.lastBounds>500){ puBounds(); E.lastBounds=now; }
+}
+document.getElementById("puSlider").addEventListener("input",e=>{
+  if(!pull.on) startPull();
+  pull.target=Math.max(0,Math.min(1,(+e.target.value||0)/100));
+  if(pull.playing){ pull.playing=false; puRefreshUI(); }
+});
+document.getElementById("puReset").addEventListener("click",()=>{ pull.target=0; pull.playing=false; document.getElementById("puSlider").value=0; puRefreshUI(); });
+document.getElementById("puClose").addEventListener("click",stopPull);
+document.getElementById("puPlay").addEventListener("click",()=>{
+  if(!pull.on){ startPull(); return; }
+  pull.playing=!pull.playing;
+  if(pull.playing) pull.phase=Math.acos(Math.min(1,Math.max(-1,1-2*pull.p)));
+  else pull.target=pull.p;
+  puRefreshUI();
+});
+document.querySelectorAll("#puSpeed button").forEach(b=>b.addEventListener("click",()=>{
+  pull.speed=+b.dataset.s;
+  document.querySelectorAll("#puSpeed button").forEach(x=>x.setAttribute("aria-pressed",(x===b)+""));
+}));
+
+/* ===================== 시뮬레이터 좌우 대칭(왼쪽 몸) =====================
+   정밀 상지·하지 모델에는 몸의 오른쪽(과 가운데 뼈)만 들어 있다. 시뮬레이터가 켜져 있는 동안 오른쪽 구조를 좌우로 뒤집은
+   복사본을 만들어 왼쪽 몸까지 전신을 보여준다. 복사본은 원본과 같은 형상(변형된 형상 포함)과 재질을 그대로 쓰므로
+   움직임·굵기·색 변화가 양쪽에서 똑같이 보인다. */
+const simMirror={root:null,pairs:[]};
+function mirrorClear(){
+  simMirror.pairs.forEach(([o,m])=>{ if(m.parent) m.parent.remove(m); const k=picks.indexOf(m); if(k>=0) picks.splice(k,1); });
+  simMirror.pairs=[]; simMirror.root=null;
+}
+function mirrorBuild(root,extra){
+  mirrorClear();
+  const src=[]; root.children.forEach(o=>{ if(o.isMesh&&o.userData.isRight) src.push(o); });
+  (extra||[]).forEach(o=>{ if(o&&o.parent===root&&src.indexOf(o)<0) src.push(o); });
+  src.forEach(o=>{
+    const m=new T.Mesh(o.geometry,o.material);
+    m.matrixAutoUpdate=false; m.frustumCulled=false; m.castShadow=o.castShadow; m.receiveShadow=o.receiveShadow; m.renderOrder=o.renderOrder;
+    m.userData={id:o.userData.id,anatomyName:o.userData.anatomyName,anatomyGroup:o.userData.anatomyGroup,anatomyFile:o.userData.anatomyFile,ctx:o.userData.ctx,mirrorOf:o};
+    m.matrix.multiplyMatrices(MIRROR,o.matrix);
+    root.add(m); if(o.userData.id&&picks.indexOf(o)>=0) picks.push(m);
+    simMirror.pairs.push([o,m]);
+  });
+  simMirror.root=root;
+}
+function mirrorSync(){
+  simMirror.pairs.forEach(([o,m])=>{
+    m.geometry=o.geometry; m.material=o.material; m.visible=o.visible;
+    m.matrix.multiplyMatrices(MIRROR,o.matrix);
+  });
+}
 /* ===================== 상태 ===================== */
 let sex="m", sysId="d-upper", sel=null, mode="learn", showSkin=false, skinTouched=false;
 const cacheShell={}, cacheSys={}, cacheMoveRig={};
@@ -3063,11 +3957,17 @@ function buildTabs(){
       +'<button class="sysrow" id="elbowEntry" style="--sc:var(--c-muscular)" aria-pressed="'+realElbow.on+'">'
       +'<span class="sysicon">🦾</span><span class="systxt"><b>팔꿈치 근육 시뮬레이터</b><i>ELBOW FLEXION · EXTENSION</i></span></button>'
       +'<button class="sysrow" id="squatEntry" style="--sc:var(--c-muscular)" aria-pressed="'+squat.on+'">'
-      +'<span class="sysicon">🪑</span><span class="systxt"><b>앉았다 일어서기 시뮬레이터</b><i>SIT-TO-STAND</i></span></button>';
+      +'<span class="sysicon">🪑</span><span class="systxt"><b>앉았다 일어서기 시뮬레이터</b><i>SIT-TO-STAND</i></span></button>'
+      +'<button class="sysrow" id="bendEntry" style="--sc:var(--c-muscular)" aria-pressed="'+bend.on+'">'
+      +'<span class="sysicon">🙇</span><span class="systxt"><b>허리 숙이고 펴기 시뮬레이터</b><i>TRUNK FLEXION · EXTENSION</i></span></button>'
+      +'<button class="sysrow" id="pullEntry" style="--sc:var(--c-muscular)" aria-pressed="'+pull.on+'">'
+      +'<span class="sysicon">🧗</span><span class="systxt"><b>턱걸이 시뮬레이터</b><i>CHIN-UP</i></span></button>';
   }
   document.querySelectorAll("#systabs button,#thumbstrip button,#detailmodels button[data-sys]").forEach(b=>b.onclick=()=>chooseSystem(b.dataset.sys));
   const eb=document.getElementById("elbowEntry"); if(eb) eb.onclick=startRealElbow;
   const qb=document.getElementById("squatEntry"); if(qb) qb.onclick=startSquat;
+  const bb=document.getElementById("bendEntry"); if(bb) bb.onclick=startBend;
+  const pb=document.getElementById("pullEntry"); if(pb) pb.onclick=startPull;
 }
 let searchQ="";
 function buildList(){
@@ -3099,6 +3999,8 @@ function buildList(){
 function refresh(refocus){
   if(realElbow.on&&(sysId!=="d-upper"||mode!=="learn")) stopRealElbow();
   if(squat.on&&(sysId!=="d-lower"||mode!=="learn")) stopSquat();
+  if(bend.on&&(sysId!=="d-lower"||mode!=="learn")) stopBend();
+  if(pull.on&&(sysId!=="d-upper"||mode!=="learn")) stopPull();
   const d=sysDef(), isMove=(mode==="move");
   [document.querySelector(".sidebar"),document.querySelector(".rightpanel"),wrapEl].forEach(e=>
     e&&e.style.setProperty("--sc",isMove?"var(--c-muscular)":"var("+d.v+")"));
@@ -3125,7 +4027,7 @@ function refresh(refocus){
   if(isMove) renderMove(true);
   else if(mode==="quiz") renderQuiz();
   else {applySel(); renderDetail();}
-  elRefreshUI(); sqRefreshUI();
+  elRefreshUI(); sqRefreshUI(); bdRefreshUI(); puRefreshUI();
 }
 
 document.getElementById("sexM").onclick=()=>{if(sex!=="m"){sex="m";sel=null;quiz.q=null;refresh(true);}};
@@ -3235,6 +4137,8 @@ document.getElementById("moveNext").onclick=()=>{
 
 document.getElementById("realElbow").onclick=toggleRealElbow;
 document.getElementById("realSquat").onclick=()=>{ if(squat.on) stopSquat(); else startSquat(); };
+document.getElementById("realBend").onclick=()=>{ if(bend.on) stopBend(); else startBend(); };
+document.getElementById("realPull").onclick=()=>{ if(pull.on) stopPull(); else startPull(); };
 
 /* ===================== 루프 ===================== */
 function resize(){
@@ -3254,7 +4158,7 @@ function tick(){
   cam.th+=(camT.th-cam.th)*k; cam.ph+=(camT.ph-cam.ph)*k; cam.r+=(camT.r-cam.r)*k;
   cam.tg.lerp(camT.tg,k);
   applyCam(); updateTip();
-  elTick(dt); sqTick(dt);
+  elTick(dt); sqTick(dt); bdTick(dt); puTick(dt); if(simMirror.pairs.length) mirrorSync();
   if(mode==="move"&&moveState.playing&&moveRigG){
     moveState.t+=dt/MOVE_PHASE_MS;
     if(moveState.t>=1){
@@ -3280,8 +4184,10 @@ document.getElementById("loading").remove();
 tick();
 /* 주소 끝의 #elbow 로 바로 시뮬레이터를 열 수 있다: https://spur76-tech.github.io/atlas/#elbow */
 /* #squat 으로 앉았다 일어서기 시뮬레이터를 바로 연다: https://spur76-tech.github.io/atlas/#squat */
-if(location.hash==="#elbow") startRealElbow(); else if(location.hash==="#squat") startSquat();
-addEventListener("hashchange",()=>{ if(location.hash==="#elbow") startRealElbow(); else if(location.hash==="#squat") startSquat(); });
+/* #bend 로 허리 숙이고 펴기 시뮬레이터를 바로 연다 */
+/* #pullup 으로 턱걸이 시뮬레이터를 바로 연다 */
+const openByHash=()=>{ const h=location.hash; if(h==="#elbow") startRealElbow(); else if(h==="#squat") startSquat(); else if(h==="#bend") startBend(); else if(h==="#pullup") startPull(); };
+openByHash(); addEventListener("hashchange",openByHash);
 })();
 </script>
 
