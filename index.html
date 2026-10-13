@@ -3005,7 +3005,7 @@ const BD_PROC=[
   d:"척주 양옆을 따라 길게 뻗은 근육 무리(엉덩갈비근·가장긴근·가시근). 이 모델에는 들어 있지 않아 위치와 길이를 나타내는 모식 형상으로 보여줍니다.",loc:"척주 양옆 (등·허리)"},
  {key:"rect",ko:"배곧은근",en:"Rectus abdominis (모식)",
   origin:"두덩뼈 위모서리·두덩결합",insertion:"복장뼈 칼돌기·5~7번째 갈비연골",action:"척주 굽힘 — 숙이기 시작할 때 약하게 작용",
-  d:"배 앞쪽 한가운데를 세로로 지나는 근육. 이 모델에는 들어 있지 않아 위치와 길이를 나타내는 모식 형상으로 보여줍니다.",loc:"배 앞면"}
+  d:"배 앞쪽 한가운데를 세로로 지나는 근육. 칼돌기·배꼽 높이와 그 사이의 나눔힘줄 3개가 근육을 여러 칸의 근육배로 나누고, 좌우 근육 사이는 백색선이 가른다. 이 모델에는 들어 있지 않아 실제 형태를 본떠 만든 형상으로 보여줍니다.",loc:"배 앞면"}
 ];
 const BD_VERT=["L5","L4","L3","L2","L1","T12","T11","T10","T9","T8","T7","T6","T5","T4","T3","T2","T1","C7","C6","C5","C4","C3","C2","C1"];
 const BD_ARM=/^(humerus|radius|ulna|scaphoid|lunate( bone)?|triquetrum|pisiform|trapezium|trapezoid|capitate|hamate|sesamoid_bones_of_hand)$|metacarpal|phalanx of .*finger$/i;
@@ -3117,6 +3117,108 @@ function bdMakeDeform(o,segOf,muscle){
   }
   return d;
 }
+/* ===================== 배곧은근 형상 (동작 시뮬레이터 공용) =====================
+   실제 모델에 없는 배곧은근을 해부학적 형태로 만든다. 정중선 위의 기준점(두덩결합 → 배 앞벽 → 칼돌기)을 잇는 곡선을 따라
+   백색선만큼 떨어진 안쪽 모서리에서 바깥쪽으로 펼쳐지는 판을 만들고,
+   - 아래(두덩뼈, 너비 약 2.5cm)에서 위(5~7번째 갈비연골, 너비 약 7.5cm)로 넓어지는 윤곽
+   - 칼돌기 높이·배꼽 높이·그 사이의 나눔힘줄 3개(물결 모양 홈 + 힘줄색)와 그 사이로 볼록한 근육배 4개
+   - 위끝의 갈비연골 부착부(5·6·7번 연골로 가는 세 갈래), 배 앞벽 곡면을 따라 뒤로 휘는 바깥쪽
+   - 세로 근육결(셰이더)
+   을 표현한다. 모든 치수는 두덩결합–칼돌기 길이(성인 약 30cm)에 비례한다. */
+const RA_NU=120, RA_NV=34, RA_LEN0=0.30;
+const RA_INT=[{u:.47,a:-.018,w:.010,z:1.5},{u:.705,a:.012,w:.012,z:2.5},{u:.925,a:.022,w:.010,z:2}];
+function raTopo(){
+  const C=RA_NV*2, n=(RA_NU+1)*(C+1), idx=[];
+  for(let i=0;i<RA_NU;i++) for(let j=0;j<C;j++){ const a=i*(C+1)+j, b=a+C+1; idx.push(a,a+1,b,b,a+1,b+1); }
+  return {n:n,C:C,idx:idx};
+}
+const raSm=(a,b,x)=>{ const t=Math.min(1,Math.max(0,(x-a)/(b-a))); return t*t*(3-2*t); };
+/* 열(가로 위치 v)마다 고정된 값: 위끝 높이, 나눔힘줄 위치 */
+function raCol(v){
+  /* 위끝: 안쪽은 칼돌기, 바깥으로 갈수록 7·6·5번 갈비연골로 높아지는 세 갈래 */
+  const lobe=Math.sqrt(Math.abs(Math.sin(Math.PI*(2.55*v+0.12))));
+  const top=1+0.095*Math.pow(v,1.1)+0.032*lobe*raSm(0.0,0.35,v)*(1-0.35*v);
+  const ints=RA_INT.map(q=>q.u+q.a*v+0.010*Math.sin(Math.PI*(q.z*v+.25))*q.w/0.010);
+  return {top:top,ints:ints};
+}
+/* 정점 속성: 힘줄 정도(tend), 근육결 좌표(fib: 가로 위치·세로 위치) */
+function raAttrs(topo){
+  const C=topo.C, tend=new Float32Array(topo.n), fib=new Float32Array(topo.n*2);
+  for(let i=0;i<=RA_NU;i++) for(let c=0;c<=C;c++){
+    const k=i*(C+1)+c, v=raV(c), col=raCol(v), u=i/RA_NU*col.top;
+    let t=0; col.ints.forEach(ui=>{ t=Math.max(t,Math.exp(-Math.pow((u-ui)/0.015,2))); });
+    t=Math.max(t,1-raSm(0.02,0.09,u));            /* 아래끝 두덩뼈 힘줄 */
+    t=Math.max(t,0.55*raSm(col.top-0.035,col.top-0.004,u));  /* 위끝 갈비연골 부착 */
+    tend[k]=t; fib[k*2]=v; fib[k*2+1]=u;
+  }
+  return {tend:tend,fib:fib};
+}
+/* 열 번호 → 가로 위치 v(0 안쪽 모서리, 1 바깥 모서리). 앞면은 0→1, 뒷면은 1→0, 모서리 쪽으로 촘촘하게 */
+function raV(c){ const C=RA_NV*2, k=c%C, f=k<RA_NV?k/(RA_NV-1):1-(k-RA_NV)/(RA_NV-1); return (1-Math.cos(Math.PI*Math.min(1,Math.max(0,f))))/2; }
+const _raP=new T.Vector3(),_raT=new T.Vector3(),_raN=new T.Vector3(),_raB=new T.Vector3();
+/* P: 위치 배열(채움), pts: 정중선 기준점, s: 몸 쪽(+1 왼쪽 x+, -1 오른쪽), ax: 몸의 가로축, girth: 굵기 배율 */
+function raFill(P,pts,s,ax,girth){
+  girth=girth||1;
+  const curve=new T.CatmullRomCurve3(pts,false,"centripetal"); curve.arcLengthDivisions=120;
+  const L=curve.getLength(), k=L/RA_LEN0, KS=96, tab=[];
+  for(let q=0;q<=KS;q++){ const u=q/KS, p=curve.getPointAt(u), t=curve.getTangentAt(u);
+    const n=new T.Vector3().crossVectors(ax,t).normalize(), b=new T.Vector3().crossVectors(t,n).normalize(); tab.push({p:p,t:t,n:n,b:b}); }
+  const frame=u=>{
+    if(u>=1){ const e=tab[KS]; _raP.copy(e.p).addScaledVector(e.t,(u-1)*L); _raT.copy(e.t); _raN.copy(e.n); _raB.copy(e.b); return; }
+    const f=Math.max(0,u)*KS, q=Math.min(KS-1,Math.floor(f)), w=f-q, A=tab[q], Bq=tab[q+1];
+    _raP.copy(A.p).lerp(Bq.p,w); _raN.copy(A.n).lerp(Bq.n,w).normalize(); _raB.copy(A.b).lerp(Bq.b,w).normalize();
+  };
+  const C=RA_NV*2, gw=1+(girth-1)*0.18, gt=girth;
+  for(let c=0;c<=C;c++){
+    const v=raV(c), front=(c%C)<RA_NV, col=raCol(v);
+    for(let i=0;i<=RA_NU;i++){
+      const u=i/RA_NU*col.top;
+      frame(u);
+      /* 안쪽 모서리(백색선 절반 폭)와 근육 너비 */
+      const gap=k*(0.0022+0.0068*raSm(0.05,0.55,u));
+      const wid=k*gw*(0.0255+0.0505*raSm(0.0,0.80,u)-0.004*raSm(0.92,1.1,u));
+      const x=gap+wid*v;
+      /* 근육배: 나눔힘줄 사이마다 볼록, 힘줄에서 오목 */
+      let g=0; col.ints.forEach(ui=>{ g=Math.max(g,Math.exp(-Math.pow((u-ui)*L/(0.0055*k),2))); });
+      const segs=[0].concat(col.ints,[col.top]); let dome=0;
+      for(let q=0;q<segs.length-1;q++) if(u>=segs[q]&&u<=segs[q+1]){ const t=(u-segs[q])/((segs[q+1]-segs[q])||1); dome=Math.pow(Math.sin(Math.PI*t),q===0?0.45:0.7); }
+      const ev=Math.pow(Math.sin(Math.PI*(0.03+0.94*v)),0.62)*(1-0.32*v*v)*(1+0.18*Math.exp(-Math.pow((v-0.38)/0.25,2)));
+      const tap=(0.30+0.70*raSm(0.0,0.10,u))*(0.18+0.82*(1-raSm(col.top-0.06,col.top,u)));
+      const hf=k*gt*0.0160*ev*tap*(0.28+0.72*dome)*(1-0.78*g)*(u<col.ints[0]?0.9:1);
+      const hb=k*0.0040*ev*tap;
+      const z=(front?Math.max(0.0006*k,hf):-hb)-x*x/(2*0.165*k);
+      const o=(i*(C+1)+c)*3;
+      P[o]=_raP.x+_raB.x*s*x+_raN.x*z; P[o+1]=_raP.y+_raB.y*s*x+_raN.y*z; P[o+2]=_raP.z+_raB.z*s*x+_raN.z*z;
+    }
+  }
+  return L;
+}
+function raGeometry(pts,s,ax){
+  const topo=raTopo(), at=raAttrs(topo), pos=new Float32Array(topo.n*3);
+  raFill(pos,pts,s,ax,1);
+  const g=new T.BufferGeometry();
+  g.setAttribute("position",new T.BufferAttribute(pos,3));
+  g.setAttribute("tend",new T.BufferAttribute(at.tend,1));
+  g.setAttribute("fib",new T.BufferAttribute(at.fib,2));
+  g.setIndex(topo.idx); g.computeVertexNormals();
+  return g;
+}
+/* 재질: 나눔힘줄·두덩 힘줄은 흰빛 힘줄색으로, 근육배에는 세로 근육결 */
+function raPatch(m){
+  m.onBeforeCompile=sh=>{
+    sh.vertexShader=sh.vertexShader.replace("#include <common>","#include <common>\nattribute float tend;\nattribute vec2 fib;\nvarying float vTend;\nvarying vec2 vFib;")
+      .replace("#include <begin_vertex>","#include <begin_vertex>\nvTend=tend; vFib=fib;");
+    sh.fragmentShader=sh.fragmentShader.replace("#include <common>","#include <common>\nvarying float vTend;\nvarying vec2 vFib;")
+      .replace("#include <color_fragment>","#include <color_fragment>\n"+
+        "float raF=sin(vFib.x*170.0+sin(vFib.y*23.0)*1.3); float raF2=sin(vFib.x*61.0+vFib.y*5.0);\n"+
+        "diffuseColor.rgb*=vec3(0.90,0.60,0.56)*(0.93+0.045*raF+0.025*raF2);\n"+
+        "float raE=min(vFib.x,1.0-vFib.x); float raAO=(0.78+0.22*smoothstep(0.0,0.16,raE))*(1.0-0.30*smoothstep(0.08,0.45,vTend)*(1.0-smoothstep(0.55,0.9,vTend)));\n"+
+        "diffuseColor.rgb*=raAO;\n"+
+        "diffuseColor.rgb=mix(diffuseColor.rgb,vec3(0.80,0.72,0.62),clamp(vTend,0.0,1.0)*0.78);");
+  };
+  m.customProgramCacheKey=()=>"rectusAb";
+  m.needsUpdate=true; return m;
+}
 /* 모식 근육: 분절에 붙은 기준점들을 잇는 곡선을 따라 튜브를 만든다 */
 const BD_RINGS=60, BD_SEG=22;
 function bdBuildProc(sacrum,hipb,sternum){
@@ -3127,17 +3229,17 @@ function bdBuildProc(sacrum,hipb,sternum){
     const c=new T.Vector3(); let n=0; pts.forEach(p=>{ if(p.z<z0+0.02&&p.y>y1-0.07){c.add(p);n++;} }); return c.multiplyScalar(1/Math.max(1,n)); })();
   const er=[{seg:0,p:sac.clone().add(new T.Vector3(lat,0,-0.01))}].concat(["L5","L3","L1","T11","T8","T5","T2"].map(k=>{
     const v=V[at(k)]; return {seg:at(k)+1,p:v.body.clone().lerp(v.spin,0.78).add(new T.Vector3(lat,0,0))}; }));
-  /* 배곧은근: 두덩뼈 → 배 앞벽(허리뼈에 붙여 함께 움직임) → 복장뼈 아래끝 */
+  /* 배곧은근: 두덩뼈 → 배 앞벽(허리뼈에 붙여 함께 움직임) → 복장뼈 아래끝. 기준점은 정중선(백색선)에 두고 근육판은 raFill이 옆으로 펼친다 */
   const pub=(()=>{ const pts=elPoints(hipb,1); let z1=-Infinity; pts.forEach(p=>{ if(Math.abs(p.x)<0.06) z1=Math.max(z1,p.z); });
     const c=new T.Vector3(); let n=0; pts.forEach(p=>{ if(Math.abs(p.x)<0.06&&p.z>z1-0.025){c.add(p);n++;} }); return c.multiplyScalar(1/Math.max(1,n)); })();
   const xi=(()=>{ if(!sternum) return V[at("T8")].body.clone().add(new T.Vector3(0,0,0.13));
     const pts=elPoints(sternum,1); let y0=Infinity; pts.forEach(p=>{y0=Math.min(y0,p.y);}); const c=new T.Vector3(); let n=0;
     pts.forEach(p=>{ if(p.y<y0+0.02){c.add(p);n++;} }); return c.multiplyScalar(1/n); })();
-  const wall=k=>{ const v=V[at(k)]; const t=(v.body.y-pub.y)/((xi.y-pub.y)||1); const z=pub.z+(xi.z-pub.z)*t+0.035; return {seg:at(k)+1,p:new T.Vector3(side*0.035,v.body.y,z)}; };
-  const rc=[{seg:0,p:pub.clone().add(new T.Vector3(side*0.03,0.01,0.012))},wall("L4"),wall("L2"),wall("T12"),{seg:at("T8")+1,p:xi.clone().add(new T.Vector3(side*0.035,0,0.01))}];
+  const wall=k=>{ const v=V[at(k)]; const t=(v.body.y-pub.y)/((xi.y-pub.y)||1); const z=pub.z+(xi.z-pub.z)*t+0.035; return {seg:at(k)+1,p:new T.Vector3(0,v.body.y,z)}; };
+  const rc=[{seg:0,p:new T.Vector3(0,pub.y+0.01,pub.z+0.012)},wall("L4"),wall("L2"),wall("T12"),{seg:at("T8")+1,p:new T.Vector3(0,xi.y,xi.z+0.01)}];
   bend.proc=[
     bdTube(BD_PROC[0],er,u=>0.03*Math.pow(Math.sin(Math.PI*Math.min(1,u*1.05)),0.5)*(1-0.55*u),1.25,1),
-    bdTube(BD_PROC[1],rc,u=>0.011*Math.pow(Math.sin(Math.PI*u),0.4),3.2,1)
+    bdRect(BD_PROC[1],rc)
   ];
 }
 function bdTube(def,anchors,radius,ex,ez){
@@ -3152,9 +3254,22 @@ function bdTube(def,anchors,radius,ex,ez){
   const R=[]; for(let i=0;i<=BD_RINGS;i++) R.push(radius(i/BD_RINGS));
   return {def:def,mesh:mesh,mat:mat,anchors:anchors,R:R,ex:ex,ez:ez,sid:id,act:0,len:1,girth:1,L0:0,mats:[mat],color0:[mat.color.clone()]};
 }
+/* 배곧은근: 튜브 대신 해부학적 근육판(raFill)으로 */
+function bdRect(def,anchors){
+  const t=bdTube(def,anchors,()=>0,1,1), topo=raTopo(), at=raAttrs(topo), g=new T.BufferGeometry();
+  g.setAttribute("position",new T.BufferAttribute(new Float32Array(topo.n*3),3));
+  g.setAttribute("tend",new T.BufferAttribute(at.tend,1)); g.setAttribute("fib",new T.BufferAttribute(at.fib,2));
+  g.setIndex(topo.idx); t.mesh.geometry.dispose(); t.mesh.geometry=g; raPatch(t.mat); t.ra=true;
+  return t;
+}
 const _bT=new T.Vector3(),_bN=new T.Vector3(),_bB=new T.Vector3(),_bP=new T.Vector3();
 function bdSweep(t,Ms){
   const pts=t.anchors.map(a=>a.p.clone().applyMatrix4(Ms[a.seg]));
+  if(t.ra){
+    const L=raFill(t.mesh.geometry.attributes.position.array,pts,bend.side,BD_AX,t.girth); if(!t.L0) t.L0=L; t.len=L/t.L0;
+    const g=t.mesh.geometry; g.attributes.position.needsUpdate=true; g.computeVertexNormals(); g.computeBoundingSphere(); g.computeBoundingBox();
+    return;
+  }
   const curve=new T.CatmullRomCurve3(pts,false,"centripetal"); curve.arcLengthDivisions=100;
   const L=curve.getLength(); if(!t.L0) t.L0=L; t.len=L/t.L0;
   const P=t.mesh.geometry.attributes.position.array;
@@ -4292,9 +4407,9 @@ function exSetup(){
   const xi=stern?(()=>{ const pts=elPoints(stern,1); let y0=Infinity; pts.forEach(p=>{y0=Math.min(y0,p.y);}); return exAvg(pts.filter(p=>p.y<y0+0.02)); })():SP.T8.body.clone().add(new T.Vector3(0,0,0.13));
   const spineAllow=[[0,0],[1,1],[2,2]];
   const procDef=[
-    {key:"rectAb",ko:"배곧은근",d:"배 앞쪽 한가운데를 세로로 지나는 근육. 이 모델에는 없어 위치와 길이를 나타내는 모식 형상으로 보여줍니다.",loc:"배 앞면",
-     path:s=>{ const pub=J.pub.clone().add(new T.Vector3(s*0.03,0.01,0.012)), xp=xi.clone().add(new T.Vector3(s*0.035,0,0.01));
-       const wall=v=>{ const t=(v.body.y-pub.y)/((xp.y-pub.y)||1); return new T.Vector3(s*0.035,v.body.y,pub.z+(xp.z-pub.z)*t+0.035); };
+    {key:"rectAb",ko:"배곧은근",d:"배 앞쪽 한가운데를 세로로 지나는 근육. 칼돌기·배꼽 높이와 그 사이의 나눔힘줄 3개가 근육을 여러 칸의 근육배로 나누고, 좌우 근육 사이는 백색선이 가른다. 이 모델에는 없어 실제 형태를 본떠 만든 형상으로 보여줍니다.",loc:"배 앞면",ra:true,
+     path:s=>{ const pub=new T.Vector3(0,J.pub.y+0.01,J.pub.z+0.012), xp=new T.Vector3(0,xi.y,xi.z+0.01);   /* 정중선(백색선) 기준 */
+       const wall=v=>{ const t=(v.body.y-pub.y)/((xp.y-pub.y)||1); return new T.Vector3(0,v.body.y,pub.z+(xp.z-pub.z)*t+0.035); };
        return [pub,wall(SP.L3),wall(SP.L1),wall(SP.T11),xp]; }, R:u=>0.011*Math.pow(Math.sin(Math.PI*u),0.4), ex:3.2, ez:1},
     {key:"erector",ko:"척추세움근",d:"척주 양옆을 따라 길게 뻗은 근육 무리. 이 모델에는 없어 위치와 길이를 나타내는 모식 형상으로 보여줍니다.",loc:"척주 양옆 (등·허리)",
      path:s=>{ const lat=s*0.032, sa=J.backP.clone().add(new T.Vector3(lat,0.03,0));
@@ -4302,9 +4417,10 @@ function exSetup(){
   ];
   procDef.forEach(pd=>{
     const id="p:ex-"+pd.key; S[id]={ko:pd.ko,en:EX_MUS.find(g=>g.key===pd.key).en,d:pd.d,loc:pd.loc,cat:"muscle",real:false};
-    [-1,1].forEach(s=>{ const geo=exTube(pd.path(s),pd.R,pd.ex,pd.ez);
+    [-1,1].forEach(s=>{ const geo=pd.ra?raGeometry(pd.path(s),s,EX_X):exTube(pd.path(s),pd.R,pd.ex,pd.ez);
       const mat=new T.MeshStandardMaterial({color:EX_RELAX.clone(),roughness:.52,metalness:0,envMapIntensity:.28,side:T.DoubleSide});
-      makeSkin(geo,(x,y,z)=>weights(x,y,z,spineAllow,0.03),mat,{id:id,anatomyName:pd.ko,side:s<0?"R":"L",proc:true},[pd.key]); });
+      const sm=makeSkin(geo,(x,y,z)=>weights(x,y,z,spineAllow,0.03),mat,{id:id,anatomyName:pd.ko,side:s<0?"R":"L",proc:true},[pd.key]);
+      if(pd.ra) raPatch(sm.material); });
   });
   /* 길이 계산용: 근육 양 끝을 기시·정지 분절에 배정 */
   Object.values(groups).forEach(g=>{
