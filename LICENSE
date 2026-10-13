@@ -1,0 +1,50 @@
+Copyright (c) 2026 HOE (I.H KIM). All rights reserved.
+
+이 저장소에는 서로 다른 조건이 적용되는 두 종류의 자료가 들어 있습니다.
+This repository contains material under two different terms.
+
+────────────────────────────────────────────────────────────
+1. 코드와 화면 구성 (Code and page design)
+────────────────────────────────────────────────────────────
+대상: index.html 의 HTML·CSS·JavaScript, 화면 구성, 모식 모형과
+시뮬레이터(배곧은근·배바깥빗근 형상 포함) 등 HOE가 직접 만든 모든 부분.
+
+- 누구나 공개된 웹사이트(https://spur76-tech.github.io/atlas/)를 열어
+  학습 목적으로 이용할 수 있습니다.
+- 저작권자의 사전 서면 허락 없이 이 코드의 전부 또는 일부를
+  복제·수정·배포하거나, 이를 바탕으로 한 다른 웹사이트·앱·자료를 만들어
+  공개하거나 판매할 수 없습니다.
+- GitHub 이용약관에 따라 GitHub 안에서 저장소를 보거나 포크하는 것은
+  허용되지만, 이것이 위 행위에 대한 허락을 뜻하지는 않습니다.
+
+Scope: the HTML, CSS and JavaScript in index.html, the page design, the
+procedural models and simulators (including the rectus abdominis and
+external oblique shapes), and all other parts authored by HOE.
+Anyone may use the published website for learning. No part of this code
+may be copied, modified, distributed, or used to build and publish or sell
+another website, app or material without prior written permission from
+the copyright holder. Viewing and forking on GitHub as permitted by the
+GitHub Terms of Service does not grant any of those rights.
+
+────────────────────────────────────────────────────────────
+2. 3D 해부 모델 (3D anatomy models: models/*.glb)
+────────────────────────────────────────────────────────────
+models/ 폴더의 GLB 파일은 Open3DModel 프로젝트(AnatomyTOOL.org,
+Leiden University Medical Center 등)의 모델을 가공한 것이며,
+원 라이선스와 같은 Creative Commons 저작자표시-동일조건변경허락
+4.0 국제(CC BY-SA 4.0) 조건으로 배포합니다.
+https://creativecommons.org/licenses/by-sa/4.0/deed.ko
+
+The GLB files in models/ are adapted from the Open3DModel project
+(AnatomyTOOL.org, LUMC et al.) and are distributed under the same
+Creative Commons Attribution-ShareAlike 4.0 International license.
+Original credits: https://anatomytool.org/open3dmodel-credit
+Source works: BodyParts3D (© DBCLS, CC BY-SA 2.1 JP) and Z-Anatomy.
+
+────────────────────────────────────────────────────────────
+3. 외부 소프트웨어 (Third-party software, loaded from CDN)
+────────────────────────────────────────────────────────────
+- three.js — MIT License (https://threejs.org/)
+- Draco decoder — Apache License 2.0 (https://github.com/google/draco)
+
+이용 허락 문의 / Permission requests: spur76-tech (GitHub)
