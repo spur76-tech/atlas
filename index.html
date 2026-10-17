@@ -5336,21 +5336,28 @@ openByHash(); addEventListener("hashchange",openByHash);
 
 <script data-goatcounter="https://hoe76.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 <script>
-/* 방문자 카운터 표시 (GoatCounter 공개 카운터 API) */
+/* 방문자 카운터 (Abacus 카운터 API) — 기기별 하루 1회 집계
+   GoatCounter(gc.zgo.at)는 모바일 광고차단·인앱 브라우저에서 막혀 집계가 누락되어 교체함.
+   GoatCounter 스크립트는 통계 분석용으로 그대로 둠. */
 (function(){
-  var GC="https://hoe76.goatcounter.com";
+  var API="https://abacus.jasoncameron.dev", NS="spur76-atlas";
+  var BASE_TOTAL=3; // 교체 전 GoatCounter 누적값 이어받기
   var today=new Date(Date.now()+9*3600e3).toISOString().slice(0,10); // KST 날짜
-  function fmt(v){ var n=Number(String(v==null?0:v).replace(/[^0-9]/g,""))||0; return n.toLocaleString("ko-KR"); }
-  function get(q){
-    return fetch(GC+"/counter/TOTAL.json"+(q||""),{cache:"no-store"})
-      .then(function(r){ return r.status===404?{count:"0"}:r.json(); })
-      .then(function(j){ return j&&j.count!=null?j.count:null; });
+  function fmt(v){ return (Number(v)||0).toLocaleString("ko-KR"); }
+  function hide(){ var el=document.getElementById("visitCount"); if(el) el.style.display="none"; }
+  function call(op,key){
+    return fetch(API+"/"+op+"/"+NS+"/"+key,{cache:"no-store"})
+      .then(function(r){ if(r.status===404) return {value:0}; if(!r.ok) throw 0; return r.json(); })
+      .then(function(j){ return (j&&j.value!=null)?j.value:0; });
   }
-  Promise.all([get(""),get("?start="+today)]).then(function(v){
-    if(v[0]===null) throw 0;
-    document.getElementById("visitTotal").textContent=fmt(v[0]);
+  var last=null, owner=false;
+  try{ last=localStorage.getItem("atlasVisitDay"); owner=localStorage.getItem("skipgc")==="t"; }catch(e){}
+  var op=(!owner && last!==today)?"hit":"get"; // 관리자 기기(skipgc)는 집계 제외
+  Promise.all([call(op,"total"),call(op,"day-"+today)]).then(function(v){
+    if(op==="hit"){ try{ localStorage.setItem("atlasVisitDay",today); }catch(e){} }
+    document.getElementById("visitTotal").textContent=fmt(v[0]+BASE_TOTAL);
     document.getElementById("visitToday").textContent=fmt(v[1]);
-  }).catch(function(){ var el=document.getElementById("visitCount"); if(el) el.style.display="none"; });
+  }).catch(hide);
 })();
 </script>
 </body></html>
