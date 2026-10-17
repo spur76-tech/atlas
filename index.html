@@ -621,9 +621,10 @@ ol.parts .seen{flex:0 0 auto;font-size:11px;font-weight:700;color:#34D399;margin
   #gl{height:min(62vh,560px)}
   .draghint{display:none}
 }
-.visit-count{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin:14px 0 4px;font-size:13px;color:var(--ink2)}
-.visit-count span{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
-.visit-count b{color:var(--ink);font-variant-numeric:tabular-nums}
+.hoe-col{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.visit-count{display:flex;align-items:center;gap:7px;padding:2px 2px 0;font-size:11.5px;line-height:1.2;color:var(--ink3);white-space:nowrap}
+.visit-count b{color:var(--ink2);font-weight:700;font-variant-numeric:tabular-nums}
+.visit-count .vc-sep{width:1px;height:10px;background:var(--line)}
 </style>
 <div class="wrap">
 <header class="top2">
@@ -646,7 +647,10 @@ ol.parts .seen{flex:0 0 auto;font-size:11px;font-weight:700;color:#34D399;margin
       <button id="sexM" aria-pressed="true">🧍‍♂️ 남성</button>
       <button id="sexF" aria-pressed="false">🧍‍♀️ 여성</button>
     </div>
-    <div class="hoe-credit"><span class="hoe-mark">HOE</span><span class="hoe-role">Developer</span></div>
+    <div class="hoe-col">
+      <div class="hoe-credit"><span class="hoe-mark">HOE</span><span class="hoe-role">Developer</span></div>
+      <div class="visit-count" id="visitCount" title="사이트 방문자 수" aria-live="polite"><span>오늘 <b id="visitToday">–</b></span><i class="vc-sep" aria-hidden="true"></i><span>전체 <b id="visitTotal">–</b></span></div>
+    </div>
   </div>
 </header>
 
@@ -935,7 +939,6 @@ ol.parts .seen{flex:0 0 auto;font-size:11px;font-weight:700;color:#34D399;margin
     <p><b>보증 없음</b> 원 제작자와 소속 기관은 이 페이지를 보증하거나 후원하지 않습니다. 모델은 교육용이며 원 라이선스에 따라 어떠한 보증도 없이 제공됩니다. 팔꿈치 근육 시뮬레이터(0–145°), 앉았다 일어서기 시뮬레이터, 허리 숙이고 펴기 시뮬레이터, 턱걸이 시뮬레이터는 실제 상지·하지 GLB를 이용한 교육용 시각화이며, 근육 길이·굵기 변화는 모식적 표현으로 임상용 생체역학 시뮬레이터가 아닙니다.</p>
     <p><b>그 밖의 요소</b> 호흡·소화·비뇨·생식계통의 모식 모형, 동작모드, 화면 구성과 코드는 개발자 I.H KIM이 만들었습니다. 사용한 소프트웨어: <a href="https://threejs.org/" target="_blank" rel="noopener noreferrer">three.js</a> (MIT 라이선스), <a href="https://github.com/google/draco" target="_blank" rel="noopener noreferrer">Draco</a> 디코더 (Apache License 2.0).</p>
   </section>
-    <div class="visit-count" id="visitCount" aria-live="polite"><span>👀 오늘 <b id="visitToday">–</b></span><span>📊 전체 <b id="visitTotal">–</b></span></div>
     <p class="mono">8 SYSTEMS · MALE &amp; FEMALE · WEBGL</p>
 </footer>
 </div>
@@ -5337,7 +5340,7 @@ openByHash(); addEventListener("hashchange",openByHash);
 (function(){
   var GC="https://hoe76.goatcounter.com";
   var today=new Date(Date.now()+9*3600e3).toISOString().slice(0,10); // KST 날짜
-  function fmt(v){ return v==null?"0":String(v); }
+  function fmt(v){ var n=Number(String(v==null?0:v).replace(/[^0-9]/g,""))||0; return n.toLocaleString("ko-KR"); }
   function get(q){
     return fetch(GC+"/counter/TOTAL.json"+(q||""),{cache:"no-store"})
       .then(function(r){ return r.status===404?{count:"0"}:r.json(); })
