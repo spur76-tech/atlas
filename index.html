@@ -1,4 +1,4 @@
-<!doctype html><html data-theme="dark"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#0a0e17;color:#e2ecf1}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+<!doctype html><html data-theme="dark"><head><meta charset=utf8><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://gc.zgo.at; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://hoe76.goatcounter.com; connect-src 'self' data: blob: https://abacus.jasoncameron.dev https://hoe76.goatcounter.com; object-src 'none'; base-uri 'self'; form-action 'none'"><meta name="referrer" content="strict-origin-when-cross-origin"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#0a0e17;color:#e2ecf1}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
 .realistic-note{position:absolute;left:16px;top:54px;z-index:4;padding:8px 12px;border-radius:12px;background:rgba(10,14,20,.78);color:#f4f4f4;font-size:12px;backdrop-filter:blur(8px);box-shadow:0 6px 22px rgba(0,0,0,.22);pointer-events:none}
 #realElbow[aria-pressed="true"]{box-shadow:0 0 0 2px rgba(214,67,57,.25),0 8px 24px rgba(214,67,57,.22)}
 .joint-panel{position:absolute;left:16px;bottom:18px;z-index:5;width:290px;padding:12px 14px;border-radius:14px;background:rgba(12,16,22,.86);color:#fff;backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,.25);font-size:12px;display:none}
@@ -943,9 +943,9 @@ ol.parts .seen{flex:0 0 auto;font-size:11px;font-weight:700;color:#34D399;margin
 </footer>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/gltf/draco_decoder.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js" integrity="sha384-fljlqkjWlmSFjkESkQvm77heIZpoWmXEOzlCA7kOpGUH+95Zk0yGfQieWM2q136E" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/gltf/draco_decoder.js" integrity="sha384-U2n5o5G+4+vyFlo2Kk/2gPKChg4B/mr9aN9TSzIO/NmiuadKI+qWW/8uLMOuw5Gk" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
 (function(){
 "use strict";
@@ -2221,12 +2221,14 @@ function regionOf(group,file,name){
   if(/Hip bone/i.test(n)) return "골반"; if(/Femur|Patella/i.test(n)) return "넓적다리·무릎"; if(/Tibia|Fibula/i.test(n)) return "종아리";
   return "몸통";
 }
+/* 모델 파일(GLB)에서 읽은 이름은 화면 HTML에 넣기 전에 특수문자를 바꿔 둔다 (보안: HTML 삽입 방지) */
+function escHTML(v){ return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]); }
 function realId(name){ return "g:"+name; }
 function registerStruct(name,cat,region){
   const id=realId(name);
   if(!S[id]){
     const ko=toKo(name), link=LINK[name]||LINK[singular(name)];
-    S[id]={ko:ko||name.replace(/_/g," "), en:name.replace(/_/g," "), hasKo:!!ko,
+    S[id]={ko:ko||escHTML(name.replace(/_/g," ")), en:escHTML(name.replace(/_/g," ")), hasKo:!!ko,
       d:(link&&S[link])?S[link].d:CAT_DESC[cat], loc:(link&&S[link]&&S[link].rloc)||region, cat:cat, note:(link&&S[link]&&S[link].note)||null, real:true};
   }
   return id;
@@ -4997,7 +4999,7 @@ function renderDetail(){
   const iconEl=document.getElementById("detailIcon"), enEl=document.getElementById("detailEn"),
         badgeEl=document.getElementById("detailBadge"), tabsEl=document.getElementById("dtabs");
   const box=document.getElementById("detail");
-  document.getElementById("detailtitle").textContent=sel?S[sel].ko:"구조를 선택하세요";
+  document.getElementById("detailtitle").innerHTML=sel?S[sel].ko:"구조를 선택하세요"; // S의 이름은 이미 escHTML 처리됨
   iconEl.textContent=ICON[sysId]||"🫀";
   if(!sel){
     enEl.textContent=""; badgeEl.hidden=true; tabsEl.hidden=true;
@@ -5005,7 +5007,7 @@ function renderDetail(){
     return;
   }
   const s=S[sel], d=sysDef();
-  enEl.textContent=s.en;
+  enEl.innerHTML=s.en; // escHTML 처리된 값
   badgeEl.hidden=false; badgeEl.textContent=s.real?(CAT_KO[s.cat]+" · 실제 모델"):d.ko;
   badgeEl.style.setProperty("--sc","var("+(s.real?(SYSTEMS.find(x=>x.id===CAT_SYS[s.cat])||d).v:d.v)+")");
   tabsEl.hidden=false;
@@ -5098,7 +5100,7 @@ function buildList(){
     const s=S[id]; if(!s) return "";
     const ic=s.real?catIcon[s.cat]:(ICON[sysId]||"🫀");
     const en=(s.real&&!s.hasKo)?CAT_KO[s.cat]:s.en;
-    return '<li><button data-p="'+id+'" aria-current="'+(id===sel)+'"><span class="pico">'+ic
+    return '<li><button data-p="'+escHTML(id)+'" aria-current="'+(id===sel)+'"><span class="pico">'+ic
       +'</span><span class="ko">'+s.ko+(SEXNOTE[id]?'<span class="tag">남녀차이</span>':"")
       +'</span><span class="en">'+en+'</span>'+(xpSet.has(id)?'<span class="seen">탐색함</span>':'')+'<span class="chev">›</span></button></li>';
   }).join("");
@@ -5334,7 +5336,7 @@ openByHash(); addEventListener("hashchange",openByHash);
 })();
 </script>
 
-<script data-goatcounter="https://hoe76.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<script data-goatcounter="https://hoe76.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 <script>
 /* 방문자 카운터 (Abacus 카운터 API) — 기기별 하루 1회 집계
    GoatCounter(gc.zgo.at)는 모바일 광고차단·인앱 브라우저에서 막혀 집계가 누락되어 교체함.
