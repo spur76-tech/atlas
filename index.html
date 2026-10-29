@@ -1,4 +1,4 @@
-<!doctype html><html data-theme="dark"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#0a0e17;color:#e2ecf1}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+<!doctype html><html lang="ko" data-theme="dark"><head><meta charset=utf8><meta name="description" content="뼈대·근육·신경·순환계통을 3D로 돌려 보고, 퀴즈와 팔꿈치·스쿼트·턱걸이 근육 시뮬레이터로 직접 움직여 보는 고등학생용 인체 해부 학습 사이트"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#0a0e17;color:#e2ecf1}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
 .realistic-note{position:absolute;left:16px;top:54px;z-index:4;padding:8px 12px;border-radius:12px;background:rgba(10,14,20,.78);color:#f4f4f4;font-size:12px;backdrop-filter:blur(8px);box-shadow:0 6px 22px rgba(0,0,0,.22);pointer-events:none}
 #realElbow[aria-pressed="true"]{box-shadow:0 0 0 2px rgba(214,67,57,.25),0 8px 24px rgba(214,67,57,.22)}
 .joint-panel{position:absolute;left:16px;bottom:18px;z-index:5;width:290px;padding:12px 14px;border-radius:14px;background:rgba(12,16,22,.86);color:#fff;backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,.25);font-size:12px;display:none}
@@ -353,6 +353,12 @@ ol.parts .tag{font-size:9.5px;font-family:var(--mono);color:var(--sc);border:1px
 @media (max-width:1180px){.layout{grid-template-columns:1fr}}
 .sidebar{display:flex;flex-direction:column;gap:14px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px)}
 @media (max-width:1180px){.sidebar{position:static}}
+/* 중간 너비(태블릿·작은 노트북): 메뉴는 왼쪽, 3D 모델은 오른쪽 위에 바로 보이도록 2단 배치 */
+@media (min-width:761px) and (max-width:1180px){
+  .layout{grid-template-columns:210px minmax(0,1fr)}
+  .sidebar{grid-column:1;grid-row:1/span 2}
+  .stage-col,.rightpanel{grid-column:2}
+}
 .side-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:14px}
 .side-card h2{margin:0 0 10px;font-size:11px;font-family:var(--mono);letter-spacing:.13em;text-transform:uppercase;
   color:var(--ink3);font-weight:500}
@@ -672,8 +678,8 @@ ol.parts .seen{flex:0 0 auto;font-size:11px;font-weight:700;color:#34D399;margin
     </section>
     <section class="side-card">
       <h2>보기 옵션</h2>
-      <div class="opt-row"><span>피부 표시</span><button class="toggle" id="skin" aria-pressed="false"><i></i></button></div>
-      <div class="opt-row"><span>자동 회전</span><button class="toggle" id="spin" aria-pressed="false"><i></i></button></div>
+      <div class="opt-row"><span>피부 표시</span><button class="toggle" id="skin" aria-pressed="false" aria-label="피부 표시"><i></i></button></div>
+      <div class="opt-row"><span>자동 회전</span><button class="toggle" id="spin" aria-pressed="false" aria-label="자동 회전"><i></i></button></div>
       <button class="resetbtn" id="reset">⟲ 재설정</button>
     </section>
   </aside>
@@ -685,7 +691,7 @@ ol.parts .seen{flex:0 0 auto;font-size:11px;font-weight:700;color:#34D399;margin
       <div class="viewnote" id="viewnote">실제 상지 해부 모델</div><div class="realistic-note" id="realisticNote" hidden>팔꿈치 근육 시뮬레이터 · 실제 상지 GLB</div>
       <div class="vscroll" id="vscroll" role="scrollbar" aria-orientation="vertical" aria-label="화면 위아래로 이동" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" tabindex="0" title="끌어서 화면을 위아래로 이동"><div class="vthumb" id="vthumb"></div></div>
       <div class="tool2">        <button data-view="front">▮<span>앞면</span></button>
-        <button data-view="back">▯<span>뒤면</span></button>
+        <button data-view="back">▯<span>뒷면</span></button>
         <button data-view="left">◀<span>왼쪽</span></button>
         <button data-view="right">▶<span>오른쪽</span></button>
         <button data-view="top">▲<span>위쪽</span></button>
@@ -816,7 +822,7 @@ ol.parts .seen{flex:0 0 auto;font-size:11px;font-weight:700;color:#34D399;margin
           <thead><tr><th>근육</th><th>상태</th><th>활성</th><th>굵기*</th><th>길이*</th></tr></thead>
           <tbody id="elRows"></tbody>
         </table>
-        <p class="el-note">* 굵기는 원래 모델 대비 근육 배(가운데 부분)의 두께, 길이는 중간 각도를 100%로 둔 근육-힘줄 길이로, 모두 모식 추정값입니다. 굵기·색 변화는 관절 각도와 움직임 방향에 맞춘 시각화이며 실측 생체역학 값이 아닙니다. 근육 이름을 누르면 아래쪽에 설명이 나타납니다.</p>
+        <p class="el-note">* 굵기는 원래 모델 대비 근육 배(가운데 부분)의 두께, 길이는 중간 각도를 100%로 둔 근육-힘줄 길이로, 모두 모식 추정값입니다. 길이 숫자는 현재 자세에서의 길이이고, ▼는 지금 짧아지는 중, ▲는 길어지는 중임을 뜻합니다. 예를 들어 깊이 굽힌 자세에서 펴기 시작하면 위팔세갈래근은 아직 100%보다 길지만(▼) 수축하며 짧아지고 있습니다. 굵기·색 변화는 관절 각도와 움직임 방향에 맞춘 시각화이며 실측 생체역학 값이 아닙니다. 근육 이름을 누르면 아래쪽에 설명이 나타납니다.</p>
       </div>
     </section>
     <section class="card simcard" id="squatcard" hidden aria-live="polite">
@@ -928,7 +934,7 @@ ol.parts .seen{flex:0 0 auto;font-size:11px;font-weight:700;color:#34D399;margin
 </div>
 
 <footer>
-  <p>고등학교 통합과학·생명과학 수준의 계통 해부 학습 자료입니다. 모든 형상은 위치와 상대적 크기를 이해하기 위해 절차적으로 생성한 모식 모형이며, 실제 장기의 세부 형태와는 차이가 있습니다. 뼈대·근육·신경·순환계통과 정밀 모델은 업로드한 실제 해부 모델(GLB)로 보여주며, 이 모델은 성별 구분 없이 한 가지입니다. 호흡·소화·비뇨·생식계통과 동작모드는 모식 모형을 사용합니다.</p>
+  <p>고등학교 통합과학·생명과학 수준의 계통 해부 학습 자료입니다. 일부 형상은 위치와 상대적 크기를 이해하기 위해 절차적으로 생성한 모식 모형이며, 실제 장기의 세부 형태와는 차이가 있습니다. 뼈대·근육·신경·순환계통과 정밀 모델은 업로드한 실제 해부 모델(GLB)로 보여주며, 이 모델은 성별 구분 없이 한 가지입니다. 호흡·소화·비뇨·생식계통과 동작모드는 모식 모형을 사용합니다.</p>
 <section class="credits" aria-labelledby="crh">
     <h2 id="crh">출처 및 라이선스 (3D 해부 모델)</h2>
     <p>이 페이지의 실제 해부 모델은 <a href="https://anatomytool.org/open3dmodel" target="_blank" rel="noopener noreferrer">Open3DModel</a> 프로젝트(AnatomyTOOL.org, Leiden University Medical Center 등)의 모델을 가공한 것입니다. 전체 제작진은 <a href="https://anatomytool.org/open3dmodel-credit" target="_blank" rel="noopener noreferrer">Open3DModel 제작진 페이지</a>에서 확인할 수 있습니다.</p>
@@ -2795,9 +2801,9 @@ function elUpdatePanel(){
   const ph=document.getElementById("elPhase"), en=document.getElementById("elPhaseEn");
   const ag=document.getElementById("elAgonist"), an=document.getElementById("elAntagonist");
   if(dir>0){ ph.textContent="굽힘"; en.textContent="FLEXION";
-    ag.innerHTML=EL_FLEX+"<small>수축 · 짧고 두꺼워짐</small>"; an.innerHTML=EL_EXT+"<small>이완 · 길고 가늘어짐</small>"; }
+    ag.innerHTML=EL_FLEX+"<small>수축 · 길이가 줄어드는 중</small>"; an.innerHTML=EL_EXT+"<small>이완 · 길이가 늘어나는 중</small>"; }
   else if(dir<0){ ph.textContent="폄"; en.textContent="EXTENSION";
-    ag.innerHTML=EL_EXT+"<small>수축 · 짧고 두꺼워짐</small>"; an.innerHTML=EL_FLEX+"<small>이완 · 길고 가늘어짐</small>"; }
+    ag.innerHTML=EL_EXT+"<small>수축 · 길이가 줄어드는 중</small>"; an.innerHTML=EL_FLEX+"<small>이완 · 길이가 늘어나는 중</small>"; }
   else { ph.textContent="정지 · 자세 유지"; en.textContent="ISOMETRIC";
     if(realElbow.hold>0){ ag.innerHTML=EL_FLEX+"<small>등척성 수축으로 각도 유지</small>"; an.innerHTML=EL_EXT+"<small>이완</small>"; }
     else { ag.innerHTML=EL_EXT+"<small>폄 자세 유지</small>"; an.innerHTML=EL_FLEX+"<small>이완</small>"; } }
@@ -2808,7 +2814,11 @@ function elUpdatePanel(){
     m.ui.st.textContent=on?"수축":"이완"; m.ui.st.className="el-state "+(on?"c":"r");
     m.ui.bar.style.width=Math.round(m.act*100)+"%"; m.ui.bar.style.background=hex; m.ui.sw.style.background=hex;
     m.ui.gir.textContent=Math.round(m.girth*100)+"%";
-    m.ui.len.textContent=Math.round(m.len*100)+"%";
+    /* 길이 칸에 변화 방향(▼ 짧아지는 중 / ▲ 길어지는 중)을 함께 표시 */
+    const dl=m.prevLen==null?0:m.len-m.prevLen; m.prevLen=m.len;
+    m.trend=Math.abs(dl)>1e-5?(dl<0?" ▼":" ▲"):(dir===0?"":(m.trend||""));
+    m.ui.len.textContent=Math.round(m.len*100)+"%"+m.trend;
+    m.ui.len.title=m.trend===" ▼"?"짧아지는 중":m.trend===" ▲"?"길어지는 중":"";
   });
 }
 function elTick(dt){
@@ -4947,6 +4957,8 @@ function systemFocus(){
   const box=new T.Box3();
   picks.forEach(m=>{m.updateWorldMatrix(true,false); box.expandByObject(m);});
   if(box.isEmpty()) return {c:new T.Vector3(0,9,0),r:30};
+  /* 팔(상지) 모델: 어깨 위 머리뼈가 화면 위쪽에서 잘리지 않도록 위로 여유를 둠 */
+  if(sysId==="d-upper"){ const h=box.max.y-box.min.y; box.max.y+=h*0.25; }
   const c=box.getCenter(new T.Vector3()), s=box.getSize(new T.Vector3());
   return {c:c, r:Math.max(4.5, fitRadius(s)*1.15+1.0)};
 }
@@ -5208,7 +5220,12 @@ function renderQuiz(){
   if(pool.length<4){box.innerHTML='<p class="empty">이 계통은 문항이 부족합니다. 다른 계통을 선택하세요.</p>';return;}
   if(!quiz.q||pool.indexOf(quiz.q)<0){
     quiz.q=pool[Math.floor(Math.random()*pool.length)];
-    const others=pool.filter(x=>x!==quiz.q).sort(()=>Math.random()-.5).slice(0,3);
+    /* 오답 보기는 정답과 같은 종류(근육·신경·동맥 등)에서 우선 뽑아 쉽게 지워지지 않게 함 */
+    const qc=S[quiz.q].cat, rest=pool.filter(x=>x!==quiz.q).sort(()=>Math.random()-.5);
+    const same=qc?rest.filter(x=>S[x].cat===qc):[];
+    /* 이름이 같은 보기(예: '노신경 가지' 여러 개)는 하나만 남김 */
+    const seen=new Set([S[quiz.q].ko]), others=[];
+    same.concat(rest.filter(x=>same.indexOf(x)<0)).forEach(x=>{ if(others.length<3&&!seen.has(S[x].ko)){ seen.add(S[x].ko); others.push(x); } });
     quiz.opts=[quiz.q].concat(others).sort(()=>Math.random()-.5); quiz.done=false;
     sel=quiz.q; applySel();
     const f=focusOf(sel); if(f) flyTo(f.c,f.r*1.15);
@@ -5246,6 +5263,12 @@ document.getElementById("modeMove").onclick=()=>{if(mode==="move")return;
   if(realElbow.on||squat.on||bend.on||pull.on||ex.on){ refresh(false); return; }   /* 이미 켜진 시뮬레이터는 그대로 */
   refresh(false); startEx(ex.lastId);
 };
+/* 퀴즈·동작 탭을 눌렀을 때 3D 화면이 화면 밖에 있으면 그쪽으로 이동 */
+["modeQuiz","modeMove"].forEach(id=>document.getElementById(id).addEventListener("click",()=>{
+  const st=document.getElementById("stagewrap"); if(!st) return;
+  const r=st.getBoundingClientRect();
+  if(r.top<0||r.top>innerHeight*0.5) requestAnimationFrame(()=>st.scrollIntoView({behavior:reduce?"auto":"smooth",block:"start"}));
+}));
 document.getElementById("navHome").onclick=()=>{
   mode="learn"; sysId="skeletal"; sex="m"; sel=null; quiz.q=null; skinTouched=false; moveState.playing=false;
   document.getElementById("listcard").hidden=false; refresh(true);
