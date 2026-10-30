@@ -348,6 +348,10 @@ ol.parts .tag{font-size:9.5px;font-family:var(--mono);color:var(--sc);border:1px
 .gender2 button{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink2);
   border-radius:999px;padding:8px 16px;font-size:12.5px;font-family:var(--sans);cursor:pointer;font-weight:500}
 .gender2 button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.langsw{appearance:none;display:flex;gap:2px;padding:3px;border:1px solid var(--line);background:var(--surface);
+  border-radius:999px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:700}
+.langsw span{padding:6px 11px;border-radius:999px;color:var(--ink2)}
+.langsw[aria-checked="false"] span[lang="ko"],.langsw[aria-checked="true"] span[lang="en"]{background:#118fc4;color:#fff}
 
 .layout{display:grid;grid-template-columns:230px minmax(0,1fr) 336px;gap:16px;align-items:start}
 @media (max-width:1180px){.layout{grid-template-columns:1fr}}
@@ -649,6 +653,7 @@ ol.parts .seen{flex:0 0 auto;font-size:11px;font-weight:700;color:#34D399;margin
   </nav>
   <div class="topright">
     <div class="xp-pill" title="이 계통에서 눌러 본 구조 수 (이 브라우저에 저장)"><span>탐색한 구조</span><i><b id="xpBar"></b></i><strong id="xpNum">0 / 0</strong></div>
+    <button class="langsw" id="langSw" role="switch" aria-checked="false" aria-label="English" title="한국어 ⇄ English" translate="no"><span lang="ko">KO</span><span lang="en">EN</span></button>
     <div class="gender2" role="group" aria-label="성별">
       <button id="sexM" aria-pressed="true">🧍‍♂️ 남성</button>
       <button id="sexF" aria-pressed="false">🧍‍♀️ 여성</button>
@@ -949,6 +954,7 @@ ol.parts .seen{flex:0 0 auto;font-size:11px;font-weight:700;color:#34D399;margin
 </footer>
 </div>
 
+<script src="i18n-en.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/gltf/draco_decoder.js"></script>
@@ -956,6 +962,97 @@ ol.parts .seen{flex:0 0 auto;font-size:11px;font-weight:700;color:#34D399;margin
 (function(){
 "use strict";
 if(!window.THREE){ document.getElementById("loading").textContent="3D 라이브러리를 불러오지 못했습니다"; return; }
+/* ===================== 언어 (한국어 · English) =====================
+   화면 문구는 한국어로 그대로 두고, English를 고르면 i18n-en.js의 사전(ATLAS_EN)으로 화면의 글자만 바꾼다.
+   구조물 이름은 nm()/nm2()로 주·보조 이름을 고르고, translate="no" 안의 글자는 바꾸지 않는다. */
+let LANG="ko";
+try{ LANG=new URLSearchParams(location.search).get("lang")||localStorage.getItem("atlas-lang")||LANG; }catch(e){}
+if(LANG!=="en") LANG="ko";
+const nm=s=>(LANG==="en"&&s.en)?s.en:s.ko;          /* 주 이름 */
+const nm2=s=>(LANG==="en"&&s.en)?s.ko:(s.en||"");   /* 보조 이름 */
+const I18N=(()=>{
+  const DICT=window.ATLAS_EN||{}, HAN=/[가-힣]/, cache=new Map();
+  const ORDN=n=>n+(/1\d$/.test(n)?"th":({1:"st",2:"nd",3:"rd"}[n.slice(-1)]||"th"));
+  /* 숫자가 섞여 만들어지는 문구 */
+  const RULES=[
+    [/(\d+)번째/g,(m,n)=>ORDN(n)],
+    [/^(\d+)개$/,(m,n)=>n+(n==="1"?" item":" items")],
+    [/^(\d+)종$/,(m,n)=>n+" types"],
+    [/맞힘 (\d+) \/ 푼 문제 (\d+)/,(m,a,b)=>"Correct "+a+" / Answered "+b]
+  ];
+  const keys=Object.keys(DICT).filter(k=>k.length>1).sort((a,b)=>b.length-a.length);
+  const esc=k=>k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  const SUB=keys.length?new RegExp(keys.map(esc).join("|"),"g"):null;
+  function tr(str){
+    if(!HAN.test(str)) return str;
+    if(cache.has(str)) return cache.get(str);
+    const lead=str.match(/^\s*/)[0], trail=str.match(/\s*$/)[0], core=str.trim().replace(/\s+/g," ");
+    let out=DICT[core];
+    const pre=core.match(/^[^가-힣A-Za-z0-9]+/);   /* "🔙 등"처럼 아이콘이 앞에 붙은 짧은 이름 */
+    if(out===undefined&&pre&&DICT[core.slice(pre[0].length)]!==undefined) out=pre[0]+DICT[core.slice(pre[0].length)];
+    if(out===undefined){
+      out=SUB?core.replace(SUB,k=>DICT[k]):core;
+      for(const [re,fn] of RULES) if(HAN.test(out)) out=out.replace(re,fn);
+    }
+    out=lead+out+trail; cache.set(str,out); return out;
+  }
+  const ATTRS=["title","aria-label","placeholder","alt"];
+  const origText=new WeakMap(), setText=new WeakMap(), origAttr=new WeakMap();
+  const skip=el=>!el||!!el.closest("script,style,[translate=no]");
+  function doText(n){
+    if(skip(n.parentElement)) return;
+    if(setText.get(n)!==n.data) origText.set(n,n.data);
+    const o=origText.get(n); if(o===undefined) return;
+    const v=LANG==="en"?tr(o):o;
+    if(n.data!==v) n.data=v;
+    setText.set(n,v);
+  }
+  function doAttr(el,a){
+    if(skip(el)||!el.hasAttribute(a)) return;
+    let m=origAttr.get(el); if(!m){m={};origAttr.set(el,m);}
+    const cur=el.getAttribute(a);
+    if(!m[a]||m[a].set!==cur) m[a]={o:cur};
+    const v=LANG==="en"?tr(m[a].o):m[a].o;
+    if(cur!==v) el.setAttribute(a,v);
+    m[a].set=v;
+  }
+  function walk(root){
+    if(root.nodeType===3){ doText(root); return; }
+    if(root.nodeType!==1) return;
+    ATTRS.forEach(a=>doAttr(root,a));
+    const tw=document.createTreeWalker(root,NodeFilter.SHOW_TEXT|NodeFilter.SHOW_ELEMENT);
+    let n; while((n=tw.nextNode())){ if(n.nodeType===3) doText(n); else ATTRS.forEach(a=>doAttr(n,a)); }
+  }
+  const mo=new MutationObserver(list=>{
+    for(const r of list){
+      if(r.type==="characterData") doText(r.target);
+      else if(r.type==="attributes") doAttr(r.target,r.attributeName);
+      else r.addedNodes.forEach(walk);
+    }
+  });
+  mo.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:ATTRS});
+  return {tr,walk};
+})();
+function applyLang(){
+  document.documentElement.lang=LANG;
+  document.getElementById("langSw").setAttribute("aria-checked",LANG==="en");
+  I18N.walk(document.body);
+}
+function setLang(l){
+  if(l===LANG) return;
+  LANG=l; try{ localStorage.setItem("atlas-lang",l); }catch(e){}
+  applyLang(); buildTabs(); refresh(false);
+  /* 이미 만들어 둔 시뮬레이터 표의 근육 이름도 새 언어로 다시 만든다 */
+  if(realElbow.on&&realElbow.ready){ elBuildRows(); realElbow.drawn=-1; }
+  if(squat.on&&squat.ready){ sqBuildRows(); squat.drawn=-1; }
+  if(bend.on&&bend.ready){ bdBuildRows(); bend.drawn=-1; }
+  if(pull.on&&pull.ready){ puBuildRows(); pull.drawn=-1; }
+  if(ex.on&&ex.ready&&ex.def){ exBuildCard(); exUpdatePanel(); }
+  const tn=document.getElementById("todayName");
+  if(tn&&tn.dataset.n) tn.textContent=LANG==="en"?tn.dataset.n:(toKo(tn.dataset.n)||tn.dataset.n);
+}
+document.getElementById("langSw").onclick=()=>setLang(LANG==="en"?"ko":"en");
+applyLang();
 const T=THREE;
 
 /* ===================== 계통 & 사전 ===================== */
@@ -2784,8 +2881,8 @@ function elBuildRows(){
   rows.innerHTML=realElbow.muscles.map(m=>{
     const head=m.def.group!==g?'<tr class="el-grp"><td colspan="5">'+(m.def.group==="flex"?"굽힘근 · Flexors":"폄근 · Extensors")+"</td></tr>":"";
     g=m.def.group;
-    return head+'<tr data-sid="'+m.sid+'"><td><button class="el-name" type="button"><span class="el-sw"></span><span><b>'+m.def.ko
-      +'</b><i>'+m.def.en+'</i></span></button></td><td><span class="el-state r">이완</span></td>'
+    return head+'<tr data-sid="'+m.sid+'"><td><button class="el-name" type="button"><span class="el-sw"></span><span><b>'+nm(m.def)
+      +'</b><i translate="no">'+nm2(m.def)+'</i></span></button></td><td><span class="el-state r">이완</span></td>'
       +'<td><span class="el-bar"><i></i></span></td><td class="el-num el-gir">100%</td><td class="el-num el-len">100%</td></tr>';
   }).join("");
   realElbow.muscles.forEach(m=>{
@@ -3101,8 +3198,8 @@ function stopSquat(){
 }
 function sqBuildRows(){
   const rows=document.getElementById("sqRows");
-  rows.innerHTML=squat.groups.map((g,i)=>'<tr data-i="'+i+'"><td><button class="el-name" type="button"><span class="el-sw"></span><span><b>'+g.def.ko
-    +'</b><i>'+g.def.en+'</i></span></button></td><td><span class="el-state r">이완</span></td>'
+  rows.innerHTML=squat.groups.map((g,i)=>'<tr data-i="'+i+'"><td><button class="el-name" type="button"><span class="el-sw"></span><span><b>'+nm(g.def)
+    +'</b><i translate="no">'+nm2(g.def)+'</i></span></button></td><td><span class="el-state r">이완</span></td>'
     +'<td><span class="el-bar"><i></i></span></td><td class="el-num el-gir">100%</td><td class="el-num el-len">100%</td></tr>').join("");
   squat.groups.forEach((g,i)=>{
     const tr=rows.querySelector('tr[data-i="'+i+'"]');
@@ -3503,8 +3600,8 @@ function bdAllGroups(){ /* 표 순서: 척추세움근(엉덩갈비근·가장�
 }
 function bdBuildRows(){
   const rows=document.getElementById("bdRows"), list=bdAllGroups();
-  rows.innerHTML=list.map((g,i)=>'<tr data-i="'+i+'"><td><button class="el-name" type="button"><span class="el-sw"></span><span><b>'+g.def.ko
-    +'</b><i>'+g.def.en+'</i></span></button></td><td><span class="el-state r">이완</span></td>'
+  rows.innerHTML=list.map((g,i)=>'<tr data-i="'+i+'"><td><button class="el-name" type="button"><span class="el-sw"></span><span><b>'+nm(g.def)
+    +'</b><i translate="no">'+nm2(g.def)+'</i></span></button></td><td><span class="el-state r">이완</span></td>'
     +'<td><span class="el-bar"><i></i></span></td><td class="el-num el-gir">100%</td><td class="el-num el-len">100%</td></tr>').join("");
   list.forEach((g,i)=>{
     const tr=rows.querySelector('tr[data-i="'+i+'"]');
@@ -3891,8 +3988,8 @@ function puBuildRows(){
   const head={ag:"주동근 · Prime movers",syn:"협력근 · Synergists",ant:"길항근 · Antagonists"};
   rows.innerHTML=pull.groups.map((g,i)=>{
     const h=g.def.role!==r0?'<tr class="el-grp"><td colspan="5">'+head[g.def.role]+"</td></tr>":""; r0=g.def.role;
-    return h+'<tr data-i="'+i+'"><td><button class="el-name" type="button"><span class="el-sw"></span><span><b>'+g.def.ko
-    +'</b><i>'+g.def.en+'</i></span></button></td><td><span class="el-state r">이완</span></td>'
+    return h+'<tr data-i="'+i+'"><td><button class="el-name" type="button"><span class="el-sw"></span><span><b>'+nm(g.def)
+    +'</b><i translate="no">'+nm2(g.def)+'</i></span></button></td><td><span class="el-state r">이완</span></td>'
     +'<td><span class="el-bar"><i></i></span></td><td class="el-num el-gir">100%</td><td class="el-num el-len">100%</td></tr>'; }).join("");
   pull.groups.forEach((g,i)=>{
     const tr=rows.querySelector('tr[data-i="'+i+'"]');
@@ -4734,7 +4831,7 @@ function exRenderPick(){
   const items=c=>c==="basic"?EX_BASIC:EX_DEFS.filter(d=>d.cat===c);
   document.getElementById("exList").innerHTML=items(cat).map(d=>{
     const on=d.basic?(SIM_PICK?SIM_PICK[d.basic].on():false):(ex.on&&ex.id===d.id);
-    return '<button data-x="'+d.id+'" aria-pressed="'+on+'"><b>'+d.ko+'</b><i>'+d.en+"</i></button>"; }).join("");
+    return '<button data-x="'+d.id+'" aria-pressed="'+on+'"><b>'+nm(d)+'</b><i translate="no">'+nm2(d)+"</i></button>"; }).join("");
   document.querySelectorAll("#exCats button").forEach(b=>b.onclick=()=>{ ex.cat=b.dataset.c; exRenderPick(); });
   document.querySelectorAll("#exList button").forEach(b=>b.onclick=()=>{
     const d=EX_DEFS.find(x=>x.id===b.dataset.x)||EX_BASIC.find(x=>x.id===b.dataset.x);
@@ -4743,8 +4840,8 @@ function exRenderPick(){
 }
 function exBuildCard(){
   const d=ex.def;
-  document.getElementById("exCardTitle").textContent=d.ko;
-  document.getElementById("exTitle").textContent=d.ko;
+  document.getElementById("exCardTitle").textContent=nm(d);
+  document.getElementById("exTitle").textContent=nm(d);
   document.getElementById("exT0").textContent="0% "+d.t0; document.getElementById("exT1").textContent="100% "+d.t1;
   document.getElementById("exHint").textContent=d.desc;
   for(let i=0;i<4;i++){ const t=d.tiles[i], box=document.getElementById("exL"+i).parentElement;
@@ -4755,7 +4852,7 @@ function exBuildCard(){
   roles.forEach(([r,label])=>{ const keys=(d.m[r]||[]).filter(k=>ex.groups[k]&&ex.groups[k].meshes.length); if(!keys.length) return;
     html+='<tr class="el-grp" data-role="'+r+'"><td colspan="5">'+label+"</td></tr>";
     keys.forEach(k=>{ const g=ex.groups[k]; ex.rows.push({k:k,r:r});
-      html+='<tr data-k="'+k+'"><td><button class="el-name" type="button"><span class="el-sw"></span><span><b>'+g.def.ko+'</b><i>'+g.def.en+'</i></span></button></td><td><span class="el-state r">이완</span></td><td><span class="el-bar"><i></i></span></td><td class="el-num el-gir">100%</td><td class="el-num el-len">100%</td></tr>'; }); });
+      html+='<tr data-k="'+k+'"><td><button class="el-name" type="button"><span class="el-sw"></span><span><b>'+nm(g.def)+'</b><i translate="no">'+nm2(g.def)+'</i></span></button></td><td><span class="el-state r">이완</span></td><td><span class="el-bar"><i></i></span></td><td class="el-num el-gir">100%</td><td class="el-num el-len">100%</td></tr>'; }); });
   const rows=document.getElementById("exRows"); rows.innerHTML=html;
   ex.rows.forEach(rw=>{ const tr=rows.querySelector('tr[data-k="'+rw.k+'"]'), g=ex.groups[rw.k];
     rw.ui={sw:tr.querySelector(".el-sw"),st:tr.querySelector(".el-state"),bar:tr.querySelector(".el-bar i"),gir:tr.querySelector(".el-gir"),len:tr.querySelector(".el-len")};
@@ -5012,7 +5109,7 @@ function renderDetail(){
   const iconEl=document.getElementById("detailIcon"), enEl=document.getElementById("detailEn"),
         badgeEl=document.getElementById("detailBadge"), tabsEl=document.getElementById("dtabs");
   const box=document.getElementById("detail");
-  document.getElementById("detailtitle").textContent=sel?S[sel].ko:"구조를 선택하세요";
+  document.getElementById("detailtitle").textContent=sel?nm(S[sel]):"구조를 선택하세요";
   iconEl.textContent=ICON[sysId]||"🫀";
   if(!sel){
     enEl.textContent=""; badgeEl.hidden=true; tabsEl.hidden=true;
@@ -5020,7 +5117,8 @@ function renderDetail(){
     return;
   }
   const s=S[sel], d=sysDef();
-  enEl.textContent=s.en;
+  enEl.textContent=mode==="quiz"?"":nm2(s);   /* 퀴즈 중에는 정답이 보이지 않게 비운다 */
+  enEl.setAttribute("translate","no");
   badgeEl.hidden=false; badgeEl.textContent=s.real?(CAT_KO[s.cat]+" · 실제 모델"):d.ko;
   badgeEl.style.setProperty("--sc","var("+(s.real?(SYSTEMS.find(x=>x.id===CAT_SYS[s.cat])||d).v:d.v)+")");
   tabsEl.hidden=false;
@@ -5030,7 +5128,7 @@ function renderDetailBody(){
   if(!sel) return;
   const s=S[sel], box=document.getElementById("detail");
   if(dtab==="info"){
-    box.innerHTML='<dl><dt>한글명</dt><dd>'+s.ko+'</dd><dt>영문명</dt><dd>'+s.en+"</dd></dl>"
+    box.innerHTML='<dl><dt>한글명</dt><dd translate="no">'+s.ko+'</dd><dt>영문명</dt><dd>'+s.en+"</dd></dl>"
       +(SEXNOTE[sel]?'<div class="sexnote"><b>남녀 차이</b>'+SEXNOTE[sel]+"</div>":"");
   }else if(dtab==="loc"){
     box.innerHTML='<p class="desc">'+(s.loc||"위치 정보가 없습니다.")+"</p>";
@@ -5053,7 +5151,7 @@ function updateTip(){
   const v=f.c.clone().project(camera);
   const r=canvas.getBoundingClientRect();
   if(!tipEl){tipEl=document.createElement("div");tipEl.className="tip";wrapEl.appendChild(tipEl);}
-  tipEl.innerHTML="<b>"+S[id].ko+"</b><span>"+S[id].en+"</span>";
+  tipEl.innerHTML="<b>"+nm(S[id])+'</b><span translate="no">'+nm2(S[id])+"</span>";
   tipEl.style.left=Math.max(64,Math.min(r.width-64,(v.x*.5+.5)*r.width))+"px";
   tipEl.style.top=Math.max(40,(-v.y*.5+.5)*r.height-14)+"px";
   tipEl.style.opacity=(v.z<1)?"1":"0";
@@ -5067,16 +5165,16 @@ function chooseSystem(id){
 function buildTabs(){
   document.getElementById("systabs").innerHTML=SIDE_SYSTEMS.map(s=>
     '<button class="sysrow" data-sys="'+s.id+'" style="--sc:var('+s.v+')" aria-pressed="'+(s.id===sysId)+'">'
-    +'<span class="sysicon">'+ICON[s.id]+'</span><span class="systxt"><b>'+s.ko+'</b><i>'+s.en.toUpperCase()+"</i></span></button>").join("");
+    +'<span class="sysicon">'+ICON[s.id]+'</span><span class="systxt"><b>'+nm(s)+'</b><i translate="no">'+(LANG==="en"?s.ko:s.en.toUpperCase())+"</i></span></button>").join("");
   document.getElementById("thumbstrip").innerHTML=SIDE_SYSTEMS.map(s=>
     '<button class="thumb" data-sys="'+s.id+'" style="--sc:var('+s.v+')" aria-pressed="'+(s.id===sysId)+'">'
-    +'<span class="thumbicon">'+ICON[s.id]+'</span><span>'+s.ko+"</span></button>").join("");
+    +'<span class="thumbicon">'+ICON[s.id]+'</span><span>'+nm(s)+"</span></button>").join("");
   const dm=document.getElementById("detailmodels");
   if(dm){
     dm.parentElement.hidden=!GLB_OK;
     dm.innerHTML=DETAIL_MODELS.map(s=>
       '<button class="sysrow" data-sys="'+s.id+'" style="--sc:var('+s.v+')" aria-pressed="'+(s.id===sysId)+'">'
-      +'<span class="sysicon">'+s.icon+'</span><span class="systxt"><b>'+s.ko+'</b><i>'+s.en.toUpperCase()+"</i></span></button>").join("")
+      +'<span class="sysicon">'+s.icon+'</span><span class="systxt"><b>'+nm(s)+'</b><i translate="no">'+(LANG==="en"?s.ko:s.en.toUpperCase())+"</i></span></button>").join("")
       +'<button class="sysrow" id="elbowEntry" style="--sc:var(--c-muscular)" aria-pressed="'+realElbow.on+'">'
       +'<span class="sysicon">🦾</span><span class="systxt"><b>팔꿈치 근육 시뮬레이터</b><i>ELBOW FLEXION · EXTENSION</i></span></button>'
       +'<button class="sysrow" id="squatEntry" style="--sc:var(--c-muscular)" aria-pressed="'+squat.on+'">'
@@ -5112,10 +5210,10 @@ function buildList(){
   document.getElementById("parts").innerHTML=note+filtered.map(id=>{
     const s=S[id]; if(!s) return "";
     const ic=s.real?catIcon[s.cat]:(ICON[sysId]||"🫀");
-    const en=(s.real&&!s.hasKo)?CAT_KO[s.cat]:s.en;
+    const en=(s.real&&!s.hasKo)?CAT_KO[s.cat]:nm2(s);
     return '<li><button data-p="'+id+'" aria-current="'+(id===sel)+'"><span class="pico">'+ic
-      +'</span><span class="ko">'+s.ko+(SEXNOTE[id]?'<span class="tag">남녀차이</span>':"")
-      +'</span><span class="en">'+en+'</span>'+(xpSet.has(id)?'<span class="seen">탐색함</span>':'')+'<span class="chev">›</span></button></li>';
+      +'</span><span class="ko">'+nm(s)+(SEXNOTE[id]?'<span class="tag">남녀차이</span>':"")
+      +'</span><span class="en"'+((s.real&&!s.hasKo)?"":' translate="no"')+'>'+en+'</span>'+(xpSet.has(id)?'<span class="seen">탐색함</span>':'')+'<span class="chev">›</span></button></li>';
   }).join("");
   document.querySelectorAll("#parts button").forEach(b=>b.onclick=()=>select(b.dataset.p)); xpUpdate();
 }
@@ -5202,7 +5300,7 @@ const TODAY=[
 (function initToday(){
   const day=Math.floor((Date.now()-new Date().getTimezoneOffset()*60000)/86400000), pick=TODAY[day%TODAY.length];
   const nameEl=document.getElementById("todayName"); if(!nameEl) return;
-  nameEl.textContent=toKo(pick.n)||pick.n; document.getElementById("todayDesc").textContent=pick.d;
+  nameEl.dataset.n=pick.n; nameEl.textContent=LANG==="en"?pick.n:(toKo(pick.n)||pick.n); document.getElementById("todayDesc").textContent=pick.d;
   document.getElementById("todayGo").onclick=()=>{
     if(mode!=="learn") document.getElementById("modeLearn").click();
     if(sysId!=="muscular") chooseSystem("muscular");
@@ -5238,7 +5336,7 @@ function renderQuiz(){
   const dots=()=>Array.from({length:10},(_,i)=>{ const h=quiz.hist[i]; return '<i class="'+(h===true?"ok":h===false?"no":(i===quiz.hist.length&&!quiz.done?"cur":""))+'"></i>'; }).join("");
   box.innerHTML='<div class="quiz"><div class="qtop"><span class="qround">문제 '+Math.min(10,quiz.hist.length+(quiz.done?0:1))+' / 10</span><span class="qcombo" id="qcombo">'+comboTxt()+'</span></div>'
     +'<div class="qdots" id="qdots">'+dots()+'</div><p class="q">밝게 빛나는 이 구조의 이름은?</p><div class="choices">'
-    +quiz.opts.map((id,i)=>'<button data-a="'+id+'"><span class="qk">'+"ABCD"[i]+'</span><span>'+S[id].ko+"</span></button>").join("")
+    +quiz.opts.map((id,i)=>'<button data-a="'+id+'"><span class="qk">'+"ABCD"[i]+'</span><span>'+nm(S[id])+"</span></button>").join("")
     +'</div><p class="fb" id="fb"></p><div class="score"><span>맞힘 '+quiz.right+" / 푼 문제 "+quiz.total
     +'</span><button id="nextq">다음 문제</button></div></div>';
   box.querySelectorAll(".choices button").forEach(b=>b.onclick=()=>{
@@ -5251,7 +5349,7 @@ function renderQuiz(){
       if(x.dataset.a===quiz.q)x.classList.add("ok"); else if(x===b)x.classList.add("no");});
     const fb=document.getElementById("fb"), nOk=quiz.hist.filter(Boolean).length;
     fb.className="fb "+(ok?"ok":"no");
-    fb.innerHTML='<b class="fbt">'+(ok?(quiz.streak>=2?"정답이에요! 연속 "+quiz.streak+"문제째":"정답이에요!"):"아쉬워요, 정답은 "+S[quiz.q].ko)+"</b>"+S[quiz.q].d
+    fb.innerHTML='<b class="fbt">'+(ok?(quiz.streak>=2?"정답이에요! 연속 "+quiz.streak+"문제째":"정답이에요!"):"아쉬워요, 정답은 "+nm(S[quiz.q]))+"</b>"+S[quiz.q].d
       +(quiz.hist.length>=10?'<br><b class="fbt" style="margin-top:8px">'+(nOk===10?"10문제 모두 정답! 이 계통 마스터 🏅":"이번 라운드 10문제 중 "+nOk+"개 정답")+"</b>":"");
     box.querySelector(".score span").textContent="맞힘 "+quiz.right+" / 푼 문제 "+quiz.total;
   });
