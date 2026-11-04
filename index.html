@@ -1602,12 +1602,13 @@ function domeTop(x,z){
   const C=115.3-.015*x*x-.05*(z-1.4)*(z-1.4);
   return sm(sm(R,L,2.2),C,1.6);
 }
-const DIA={ax:13.4,zc:-.4,zf:9.8,zb:9.4};
-const diaEdge=th=>106.8+3.6*Math.sin(th);
+const DIA={ax:12.8,zc:-.6,zf:7.6,zb:9.2};
+/* 앞쪽은 칼돌기·갈비연골 높이(높게), 뒤쪽은 허리뼈 쪽으로 낮게 붙는다 */
+const diaEdge=th=>{ const s=Math.sin(th); return s>0?108.0+4.6*s:108.0+3.4*s; };
 function diaY(x,z){
   const nz=z-DIA.zc, u=x/DIA.ax, w=nz/(nz>0?DIA.zf:DIA.zb);
   const r=Math.min(1,Math.hypot(u,w)), th=Math.atan2(w,u);
-  const e=diaEdge(th), k=Math.pow(Math.max(0,1-Math.pow(r,5)),.7);
+  const e=diaEdge(th), k=Math.pow(Math.max(0,1-Math.pow(r,4)),.75);
   return e+(domeTop(x,z)-e)*k;
 }
 /* 남성 음경 중심선(뿌리 → 귀두) — 비뇨·생식계통이 함께 쓴다 */
