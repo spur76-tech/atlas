@@ -1236,7 +1236,7 @@ function sweep(pts,radFn,opt){
     let r=typeof radFn==="function"?radFn(t):radFn, rx,ry;
     if(Array.isArray(r)){rx=r[0];ry=r[1];}else{rx=r;ry=r;}
     for(let j=0;j<=rad;j++){
-      const a=j/rad*Math.PI*2, ca=Math.cos(a), sa=Math.sin(a);
+      const a=j/rad*Math.PI*2, am=opt.ang?opt.ang(t,a):1, ca=Math.cos(a)*am, sa=Math.sin(a)*am;
       pos.push(P.x+N.x*rx*ca+B.x*ry*sa, P.y+N.y*rx*ca+B.y*ry*sa, P.z+N.z*rx*ca+B.z*ry*sa);
       uvs.push(j/rad, t);
     }}
@@ -1475,6 +1475,144 @@ function mat(key,color,opt){
   m.userData.base=m.color.clone();
   MATS[key]=m; return m;
 }
+/* ===================== 사실적 장기 재질 — 젖은 장막 광택·표면 혈관·소엽 무늬 =====================
+   표면 무늬는 형상 좌표(3차원 잡음)로 계산해 UV 이음매·늘어짐이 없다 */
+const NOISE3=[
+"float h31(vec3 p){p=fract(p*0.1031);p+=dot(p,p.zyx+31.32);return fract((p.x+p.y)*p.z);}",
+"float vn3(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.0-2.0*f);",
+" return mix(mix(mix(h31(i),h31(i+vec3(1.0,0.0,0.0)),f.x),mix(h31(i+vec3(0.0,1.0,0.0)),h31(i+vec3(1.0,1.0,0.0)),f.x),f.y),",
+"            mix(mix(h31(i+vec3(0.0,0.0,1.0)),h31(i+vec3(1.0,0.0,1.0)),f.x),mix(h31(i+vec3(0.0,1.0,1.0)),h31(i+vec3(1.0,1.0,1.0)),f.x),f.y),f.z);}",
+"float fbm3(vec3 p){float a=0.5,s=0.0;for(int i=0;i<4;i++){s+=a*vn3(p);p=p*2.03+vec3(1.7,9.2,3.1);a*=0.5;}return s;}",
+"float vor3(vec3 p){vec3 i=floor(p),f=fract(p);float d1=8.0,d2=8.0;",
+" for(int z=-1;z<=1;z++)for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){",
+"  vec3 g=vec3(float(x),float(y),float(z));",
+"  vec3 o=vec3(h31(i+g),h31(i+g+vec3(11.3,3.1,7.7)),h31(i+g+vec3(27.1,19.4,5.3)));",
+"  vec3 r=g+o-f;float d=dot(r,r);",
+"  if(d<d1){d2=d1;d1=d;}else if(d<d2){d2=d;}}",
+" return sqrt(d2)-sqrt(d1);}"
+].join("\n");
+function orgMat(key,color,o){
+  if(MATS[key]) return MATS[key];
+  o=o||{};
+  const m=new T.MeshPhysicalMaterial({
+    color:new T.Color(color).convertSRGBToLinear(),
+    roughness:Math.max(.58,o.rough===undefined?.6:o.rough+.2), metalness:0, side:T.DoubleSide,
+    clearcoat:Math.min(1,(o.cc===undefined?.55:o.cc)*.85), clearcoatRoughness:o.ccr===undefined?.24:o.ccr,
+    envMapIntensity:o.env===undefined?.38:o.env, vertexColors:!!o.vcol,
+    transparent:o.op!==undefined&&o.op<1, opacity:o.op===undefined?1:o.op,
+    depthWrite:!(o.op!==undefined&&o.op<1)
+  });
+  m.color.multiplyScalar(o.dim===undefined?.4:o.dim);   /* 조명이 밝아 바탕색을 낮춰야 실제 장기처럼 짙게 보인다 */
+  m.extensions={derivatives:true};
+  const U={uBump:o.bump===undefined?.07:o.bump, uFreq:o.freq===undefined?.9:o.freq,
+    uVein:o.vein||0, uVeinF:o.veinF===undefined?.55:o.veinF,
+    uCell:o.cell||0, uCellF:o.cellF===undefined?1.6:o.cellF, uMott:o.mott===undefined?.35:o.mott};
+  const VC=new T.Color(o.veinCol||"#6a1a26").convertSRGBToLinear(),
+        CC=new T.Color(o.cellCol||"#5a2a2a").convertSRGBToLinear();
+  m.onBeforeCompile=function(sh){
+    for(const k in U) sh.uniforms[k]={value:U[k]};
+    sh.uniforms.uVeinCol={value:VC}; sh.uniforms.uCellCol={value:CC};
+    sh.vertexShader="varying vec3 vObjP;\n"+sh.vertexShader.replace("#include <begin_vertex>","#include <begin_vertex>\nvObjP=position;");
+    sh.fragmentShader="varying vec3 vObjP;\nuniform float uBump;uniform float uFreq;uniform float uVein;uniform float uVeinF;uniform float uCell;uniform float uCellF;uniform float uMott;\nuniform vec3 uVeinCol;uniform vec3 uCellCol;\n"
+      +NOISE3+"\n"+sh.fragmentShader;
+    sh.fragmentShader=sh.fragmentShader.replace("#include <clipping_planes_fragment>",
+      ["#include <clipping_planes_fragment>",
+       "vec3 oP=vObjP-vec3(0.0,100.0,0.0); float oPw=length(fwidth(oP));",
+       "float oN1=fbm3(oP*uFreq);",
+       "float oN2=fbm3(oP*uFreq*3.4+vec3(5.2));",
+       "float oAa=1.0-smoothstep(0.15,0.7,oPw*uFreq*3.4);",
+       "float oVn=0.0;",
+       "if(uVein>0.0){",
+       " float oM0=smoothstep(0.40,0.62,fbm3(oP*uVeinF*0.45+vec3(7.0)));",
+       " float oR1=abs(fbm3(oP*uVeinF+vec3(11.0))-0.5);",
+       " float oR2=abs(fbm3(oP*uVeinF*2.7+vec3(3.0))-0.5);",
+       " float oA1=1.0-smoothstep(0.25,0.9,oPw*uVeinF);",
+       " float oA2=1.0-smoothstep(0.2,0.8,oPw*uVeinF*2.7);",
+       " float oV1=(1.0-smoothstep(0.0,0.016+fwidth(oR1),oR1))*(0.5+0.5*oM0)*oA1;",
+       " float oV2=(1.0-smoothstep(0.0,0.010+fwidth(oR2),oR2))*oM0*0.75*oA2;",
+       " oVn=max(oV1,oV2)*uVein; }",
+       "float oCe=0.0;",
+       "if(uCell>0.0){ float oE=vor3(oP*uCellF); float oAC=1.0-smoothstep(0.2,0.8,oPw*uCellF);",
+       " oCe=(1.0-smoothstep(0.0,0.07+fwidth(oE)*1.2,oE))*uCell*oAC; }",
+       "float oDH=(oN1-0.5)*0.8+(oN2-0.5)*0.18*oAa+oVn*0.25-oCe*0.35;"].join("\n"));
+    sh.fragmentShader=sh.fragmentShader.replace("#include <normal_fragment_begin>",
+      ["#include <normal_fragment_begin>",
+       "{ vec3 bmpDx = dFdx(-vViewPosition);",
+       "  vec3 bmpDy = dFdy(-vViewPosition);",
+       "  float bmpHx = dFdx(oDH);",
+       "  float bmpHy = dFdy(oDH);",
+       "  vec3 bmpA = cross(bmpDy, normal);",
+       "  vec3 bmpB = cross(normal, bmpDx);",
+       "  float bmpDet = dot(bmpDx, bmpA);",
+       "  float bmpSgn = bmpDet < 0.0 ? -1.0 : 1.0;",
+       "  vec3 bmpG = bmpSgn * (bmpHx * bmpA + bmpHy * bmpB);",
+       "  normal = normalize(abs(bmpDet) * normal - uBump * bmpG); }"].join("\n"));
+    sh.fragmentShader=sh.fragmentShader.replace("#include <map_fragment>",
+      ["#include <map_fragment>",
+       "diffuseColor.rgb *= mix(1.0,0.80+0.42*oN1,uMott);",
+       "diffuseColor.rgb *= 0.95+0.10*oN2;",
+       "diffuseColor.rgb = mix(diffuseColor.rgb,uCellCol,clamp(oCe,0.0,1.0)*0.65);",
+       "diffuseColor.rgb = mix(diffuseColor.rgb,uVeinCol,clamp(oVn,0.0,1.0));"].join("\n"));
+    sh.fragmentShader=sh.fragmentShader.replace("#include <roughnessmap_fragment>",
+      ["#include <roughnessmap_fragment>",
+       "roughnessFactor = clamp(roughnessFactor + 0.12*(oN2-0.5) - 0.05*oVn, 0.45, 1.0);"].join("\n"));
+  };
+  m.customProgramCacheKey=function(){return "org_v1";};
+  m.userData.base=m.color.clone();
+  MATS[key]=m; return m;
+}
+
+/* ---------- 장기 형상 도우미 ---------- */
+const oV=p=>new T.Vector3(p[0],p[1],p[2]);
+const oA=v=>[v.x,v.y,v.z];
+function oLen(pts){ return new T.CatmullRomCurve3(pts.map(oV)).getLength(); }
+/* 관 끝을 반구처럼 둥글게: 앞끝 a, 뒤끝 b 길이만큼 */
+function oEnd(L,a,b){ return t=>{ let s=1; const d0=t*L, d1=(1-t)*L;
+  if(a>0&&d0<a){const k=1-d0/a; s*=Math.sqrt(Math.max(0,1-k*k));}
+  if(b>0&&d1<b){const k=1-d1/b; s*=Math.sqrt(Math.max(0,1-k*k));}
+  return Math.max(.04,s); }; }
+function oRng(seed){ let s=(seed>>>0)||1; return ()=>{ s=(s*16807)%2147483647; return (s-1)/2147483646; }; }
+const oSS=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
+/* 같은 자리에 겹친 정점(구의 이음매·극점)의 법선을 평균해 매끈하게 */
+function oSmooth(g){ const p=g.attributes.position, n=g.attributes.normal, map=new Map();
+  for(let i=0;i<p.count;i++){ const k=Math.round(p.getX(i)*500)+","+Math.round(p.getY(i)*500)+","+Math.round(p.getZ(i)*500);
+    let a=map.get(k); if(!a){a=[];map.set(k,a);} a.push(i); }
+  map.forEach(a=>{ if(a.length<2) return; let x=0,y=0,z=0; a.forEach(i=>{x+=n.getX(i);y+=n.getY(i);z+=n.getZ(i);});
+    const l=Math.hypot(x,y,z)||1; a.forEach(i=>n.setXYZ(i,x/l,y/l,z/l)); });
+  n.needsUpdate=true; return g; }
+function oSculpt(g,fn){ const p=g.attributes.position, v=new T.Vector3();
+  for(let i=0;i<p.count;i++){ v.fromBufferAttribute(p,i); fn(v,i); p.setXYZ(i,v.x,v.y,v.z); }
+  p.needsUpdate=true; g.computeVertexNormals(); return oSmooth(g); }
+const oMir=g=>oSmooth(mirrorX(g));
+function oMtx(pos,rot,scl){ return new T.Matrix4().compose(oV(pos),
+  new T.Quaternion().setFromEuler(new T.Euler(rot?rot[0]:0,rot?rot[1]:0,rot?rot[2]:0)), scl?oV(scl):new T.Vector3(1,1,1)); }
+const oTP=(m,p)=>oA(oV(p).applyMatrix4(m));
+const oGeo=(g,m)=>{ const c=g.clone(); c.applyMatrix4(m); c.computeVertexNormals(); return oSmooth(c); };
+/* 곡선을 따라 배쪽(아래·뒤)으로 띄운 평행 곡선 */
+function oOff(pts,dv,dx){ return pts.map((p,i)=>{
+  const a=oV(pts[Math.max(0,i-1)]), b=oV(pts[Math.min(pts.length-1,i+1)]), tg=b.sub(a).normalize();
+  const ven=new T.Vector3(1,0,0).cross(tg).normalize();
+  return [p[0]+ven.x*dv+(dx||0), p[1]+ven.y*dv, p[2]+ven.z*dv]; }); }
+
+/* ---------- 가로막: 오른쪽 돔(간 위)이 왼쪽보다 높고, 가운데는 심장이 얹히는 중심널힘줄 ---------- */
+function domeTop(x,z){
+  const sm=(a,b,k)=>{const h=Math.max(k-Math.abs(a-b),0)/k; return Math.max(a,b)+h*h*k*.25;};
+  const R=118.2-.07*(x+6)*(x+6)-.06*(z-.2)*(z-.2);
+  const L=117.3-.075*(x-6)*(x-6)-.065*z*z;
+  const C=115.3-.015*x*x-.05*(z-1.4)*(z-1.4);
+  return sm(sm(R,L,2.2),C,1.6);
+}
+const DIA={ax:13.4,zc:-.4,zf:9.8,zb:9.4};
+const diaEdge=th=>106.8+3.6*Math.sin(th);
+function diaY(x,z){
+  const nz=z-DIA.zc, u=x/DIA.ax, w=nz/(nz>0?DIA.zf:DIA.zb);
+  const r=Math.min(1,Math.hypot(u,w)), th=Math.atan2(w,u);
+  const e=diaEdge(th), k=Math.pow(Math.max(0,1-Math.pow(r,5)),.7);
+  return e+(domeTop(x,z)-e)*k;
+}
+/* 남성 음경 중심선(뿌리 → 귀두) — 비뇨·생식계통이 함께 쓴다 */
+const PEN=[[0,85.6,2.4],[0,86.2,4.6],[0,85.6,6.8],[0,83.6,8.4],[0,81.0,8.9]];
+
 const PAL={
  bone:"#f1e5cf", boneDeep:"#cdbb9d",
  muscle:"#b5706f", muscleDeep:"#9c5b5c", tendon:"#eee8da",
@@ -2023,127 +2161,438 @@ function buildCirculatory(){
   return g;
 }
 
+/* ---------- 호흡계통 ---------- */
+/* 허파: 위는 둥근 꼭대기, 아래는 가로막 돔에 눌려 오목한 바닥, 안쪽은 심장자국·허파문,
+   왼쪽은 빗틈새 1개(2엽), 오른쪽은 빗틈새+수평틈새(3엽) */
+function lungGeo(side){
+  const L=side>0;
+  const xc=side*(L?7.6:8.0), zc=-.3, Wl=L?6.9:7.2, Wm=L?4.4:4.9, Df=L?6.6:7.0, Db=L?7.8:8.1, apexY=L?141.6:141.3;
+  const g=new T.SphereGeometry(1,160,110), p=g.attributes.position, v=new T.Vector3();
+  const foot=(cx,cz,R,t)=>{
+    const lat=cx*side;
+    const xo=side*(lat>0?Wl*lat:Wm*(1+.3*Math.max(0,cz))*lat)*R, zo=(cz>0?Df*cz:Db*cz)*R;
+    return [xc-side*1.9*t+xo, zc-.6*t+zo];
+  };
+  const baseY=(X,Z)=>Math.max(diaY(X,Z)+.45, 109.8-2.6*Math.max(0,-(Z-zc)/Db));
+  for(let i=0;i<p.count;i++){
+    v.fromBufferAttribute(p,i);
+    const rr=Math.hypot(v.x,v.z), cx=rr>1e-6?v.x/rr:1, cz=rr>1e-6?v.z/rr:0;
+    let X,Y,Z;
+    if(v.y>=0){
+      const t=1-Math.pow(rr,2.3);
+      const f1=foot(cx,cz,1,0), yb=baseY(f1[0],f1[1]);
+      const f=foot(cx,cz,rr,t); X=f[0]; Z=f[1];
+      Y=yb+(apexY-yb)*t;
+    }else{
+      const f=foot(cx,cz,rr,0); X=f[0]; Z=f[1]; Y=baseY(X,Z);
+    }
+    const lat=cx*side;
+    if(lat<0){
+      const m=-lat;
+      X+=side*(L?2.5:.9)*m*Math.exp(-Math.pow((Y-119.5)/5.2,2)-Math.pow((Z-2.4)/3.8,2));   /* 심장자국 */
+      X+=side*.9*m*Math.exp(-Math.pow((Y-128.5)/3,2)-Math.pow((Z+.8)/2.4,2));               /* 허파문 */
+    }
+    p.setXYZ(i,X,Y,Z);
+  }
+  g.computeVertexNormals(); oSmooth(g);
+  /* 틈새(엽 사이 고랑) — 법선 반대로 파낸다 */
+  const n=g.attributes.normal;
+  const obl=Z=>133.5-1.6*(Z+8.5);
+  for(let i=0;i<p.count;i++){
+    const X=p.getX(i),Y=p.getY(i),Z=p.getZ(i);
+    let d=Math.exp(-Math.pow((Y-obl(Z))/1.89/.3,2))*.6;
+    if(!L){ const up=oSS(-.4,.9,Y-obl(Z)); d=Math.max(d,Math.exp(-Math.pow((Y-127.6)/.24,2))*.3*up); }
+    if(d>.002) p.setXYZ(i,X-n.getX(i)*d,Y-n.getY(i)*d,Z-n.getZ(i)*d);
+  }
+  p.needsUpdate=true; g.computeVertexNormals(); return oSmooth(g);
+}
+function diaphragmGeo(){
+  const NR=44, NT=120, pos=[],uv=[],col=[],idx=[];
+  const cM=new T.Color("#8c2c2a").convertSRGBToLinear().multiplyScalar(.42), cT=new T.Color("#c9b9a6").convertSRGBToLinear().multiplyScalar(.36), c=new T.Color();
+  for(let i=0;i<=NR;i++){ const r=i/NR;
+    for(let j=0;j<=NT;j++){ const th=j/NT*Math.PI*2, ca=Math.cos(th), sa=Math.sin(th);
+      const x=DIA.ax*r*ca, z=DIA.zc+(sa>0?DIA.zf:DIA.zb)*r*sa;
+      pos.push(x,diaY(x,z),z);
+      /* 중심널힘줄: 앞쪽 한 잎 + 뒤가쪽 두 잎 */
+      const lf=r*(1-.3*Math.cos(3*(th-Math.PI/2)));
+      const tw=1-oSS(.27,.39,lf);
+      c.copy(cM).lerp(cT,tw); col.push(c.r,c.g,c.b);
+      uv.push(j/NT, r);
+    }}
+  for(let i=0;i<NR;i++)for(let j=0;j<NT;j++){
+    const a=i*(NT+1)+j,b=a+1,cc=a+NT+1,d=cc+1; idx.push(a,cc,b,b,cc,d);
+  }
+  const g=new T.BufferGeometry();
+  g.setAttribute("position",new T.Float32BufferAttribute(pos,3));
+  g.setAttribute("uv",new T.Float32BufferAttribute(uv,2));
+  g.setAttribute("color",new T.Float32BufferAttribute(col,3));
+  g.setIndex(idx); g.computeVertexNormals(); return oSmooth(g);
+}
+/* 기관지나무 — 엽기관지에서 4대까지 두 갈래로 나뉘며 허파 안을 채운다 */
+function bronchTree(seed,starts,inside){
+  const R=oRng(seed), list=[];
+  const grow=(p,d,len,r,gen)=>{
+    let e=p.clone().addScaledVector(d,len);
+    for(let k=0;k<4&&!inside(e);k++){ len*=.65; e=p.clone().addScaledVector(d,len); }
+    const mid=p.clone().lerp(e,.5).add(new T.Vector3(R()-.5,R()-.5,R()-.5).multiplyScalar(len*.12));
+    list.push(sweep([oA(p),oA(mid),oA(e)],t=>r*(1-.2*t),{tub:8,rad:9,cap:false}));
+    if(gen>=4) return;
+    const ax=new T.Vector3(R()-.5,R()-.5,R()-.5).cross(d).normalize();
+    const a=.42+R()*.2;
+    grow(e,d.clone().applyAxisAngle(ax,a*.85).normalize(),len*(.72+R()*.12),r*.7,gen+1);
+    grow(e,d.clone().applyAxisAngle(ax,-a*1.15).normalize(),len*(.72+R()*.12),r*.7,gen+1);
+  };
+  starts.forEach(s=>grow(oV(s.p),oV(s.d).normalize(),s.len,s.r,0));
+  return mergeGeos(list);
+}
 function buildRespiratory(){
   const g=new T.Group();
-  const mL=mat("lung",PAL.lung,{rough:.62,env:.6}), mAw=mat("air",PAL.airway,{rough:.4,env:.8}),
-        mD=mat("dia",PAL.diaph,{rough:.6,env:.5});
-  g.add(P("nasal",blob(1.7,1.9,2.3,null,22),mAw,[0,165,5.0]));
-  g.add(P("pharynx",sweep([V(0,163,1.6),V(0,158,1.2),V(0,155,1.0)],()=>1.8,{tub:21,rad:19}),mAw));
-  g.add(P("larynx",blob(2.1,2.7,2.2,null,26),mAw,[0,152.4,2.6]));
-  g.add(P("trachea",sweep([V(0,150,2.2),V(0,142,1.6),V(0,134.5,1.0)],()=>1.35,{tub:34,rad:22}),mAw));
-  const mR=mat("ring","#6fa4c3",{rough:.45});
-  for(let i=0;i<9;i++){const t=i/8;
-    g.add(P("trachea",new T.TorusGeometry(1.45,.2,8,24),mR,[0,150-t*15.5,2.2-t*1.2],[Math.PI/2,0,0]));}
-  const br=sweep([V(0,134.5,1.0),V(2.6,131.5,.6),V(5.4,128.6,0)],t=>.95-.3*t,{tub:24,rad:17});
-  g.add(P("bronchi",br,mAw)); g.add(P("bronchi",mirrorX(br),mAw));
-  const lungProf=(big)=>[
-    {y:115.5,rxL:3.4*big,rxR:5.0*big,rzf:5.0*big,rzb:4.6*big},
-    {y:119,rxL:4.6*big,rxR:6.6*big,rzf:6.4*big,rzb:6.0*big},
-    {y:123,rxL:4.4*big,rxR:7.0*big,rzf:6.8*big,rzb:6.5*big},
-    {y:127,rxL:3.6*big,rxR:6.8*big,rzf:6.6*big,rzb:6.5*big},
-    {y:131,rxL:3.2*big,rxR:6.0*big,rzf:5.9*big,rzb:6.0*big},
-    {y:135,rxL:2.8*big,rxR:4.6*big,rzf:4.6*big,rzb:4.8*big},
-    {y:138.5,rxL:1.9*big,rxR:2.8*big,rzf:2.9*big,rzb:3.1*big},
-    {y:140.5,rxL:.6*big,rxR:.9*big,rzf:1.0*big,rzb:1.1*big}];
-  const lgL=loft(lungProf(1.0),{radial:64,rows:96});
-  const lgR=loft(lungProf(1.07),{radial:64,rows:96});
-  g.add(P("lungs",lgL,mL,[7.6,0,.2]));
-  g.add(P("lungs",mirrorX(lgR),mL,[-7.9,-0.5,.2]));
-  const al=new T.Group();
-  for(let i=0;i<13;i++){
-    const a=i/13*Math.PI*2, r=1.5+Math.random()*0.3;
-    al.add(P("alveoli",blob(.62,.62,.62,null,12),mAw,[6.4+Math.cos(a)*r,126+Math.sin(a*1.7)*1.3,1.4+Math.sin(a)*r*.7]));
-  }
-  g.add(al);
-    const dome=blob(8.0,5.8,10.0,v=>{if(v.y<0) v.y*=.20;},40);
-  g.add(P("diaphragm",dome,mD,[7.0,112.0,0]));
-  g.add(P("diaphragm",dome.clone(),mD,[-7.0,111.4,0]));
-  g.add(P("diaphragm",blob(4.2,2.6,7.4,v=>{if(v.y<0) v.y*=.3;},28),mD,[0,111.2,0]));
+  const mL=orgMat("o_lung","#b04b55",{rough:.5,cc:.4,ccr:.3,cell:.14,cellF:.8,cellCol:"#6e2630",vein:.55,veinF:.36,veinCol:"#7a1830",mott:.5,bump:.04,freq:.45});
+  const mMu=orgMat("o_muc","#b05864",{rough:.45,cc:.6,vein:.35,veinF:1.1,veinCol:"#8a2432",mott:.3,freq:1.2});
+  const mCa=orgMat("o_cart","#c9b2a1",{rough:.45,cc:.5,mott:.25,freq:1.6,vein:.2,veinF:1.4,veinCol:"#b06468",bump:.04});
+  const mTr=orgMat("o_trach","#b97c7a",{rough:.45,cc:.55,mott:.25,freq:1.4,vein:.3,veinF:1.3,veinCol:"#93303c"});
+  const mAl=orgMat("o_alv","#d6878b",{rough:.45,cc:.5,vein:.9,veinF:4.2,veinCol:"#a01c2b",mott:.25,freq:3});
+  const mCr=orgMat("o_crus","#8c2c2a",{rough:.5,cc:.35,mott:.3,freq:1.5});
+  /* 코안 — 양쪽 벽의 코선반(콧살) 주름 */
+  const nas=oSculpt(blob(.8,1.9,3.0,null,40),v=>{ v.x*=1+.22*Math.sin(v.y*3.3+.4)*(1-Math.min(1,Math.abs(v.z)/3.2)); if(v.y<0) v.y*=.8; });
+  g.add(P("nasal",nas,mMu,[.95,165.2,4.4])); g.add(P("nasal",oMir(nas),mMu,[-.95,165.2,4.4]));
+  /* 인두 — 코인두에서 후두인두로 좁아지는 근육관 */
+  g.add(P("pharynx",sweep([V(0,164.6,2.4),V(0,161.8,1.3),V(0,158,.9),V(0,154.6,.9),V(0,152.0,.4)],
+    t=>1.75-.75*t,{tub:40,rad:24}),mMu));
+  /* 후두 — 방패연골(울대뼈)·반지연골·후두덮개 */
+  const thy=oSculpt(blob(2.0,1.5,1.8,null,48),v=>{
+    if(v.z>0){ const a=1-Math.min(1,Math.abs(v.x)/2.0); v.z=v.z*.55+a*1.15*(v.z/1.8+.15); }
+    if(v.y>.8&&v.z>0) v.y-=.55*Math.exp(-v.x*v.x/.12);
+  });
+  g.add(P("larynx",thy,mCa,[0,153.2,2.2]));
+  const cri=new T.TorusGeometry(1.2,.34,12,36);
+  cri.rotateX(Math.PI/2); oSculpt(cri,v=>{ if(v.z<0) v.y*=1+1.6*Math.min(1,-v.z/1.2); });
+  g.add(P("larynx",cri,mCa,[0,151.0,2.0]));
+  g.add(P("larynx",oSculpt(blob(1.0,1.35,.22,null,28),v=>{ v.z+=.25*v.y*v.y/1.8; }),mCa,[0,155.4,1.4],[-.35,0,0]));
+  /* 기관 — 뒤가 열린 C자 연골고리 16개 */
+  const TR=[V(0,150.4,2.2),V(0,146,1.9),V(0,140,1.4),V(0,134.6,.8)];
+  g.add(P("trachea",sweep(TR,1.12,{tub:60,rad:28}),mTr));
+  const trC=new T.CatmullRomCurve3(TR.map(oV)), ring=new T.TorusGeometry(1.24,.17,8,40,Math.PI*5/3);
+  ring.rotateX(Math.PI/2); ring.rotateY(Math.PI/3); ring.scale(1,1.7,1);
+  const rings=[]; for(let i=0;i<16;i++){ const q=trC.getPointAt((i+.5)/16); rings.push(xf(ring,[q.x,q.y,q.z])); }
+  g.add(P("trachea",mergeGeos(rings),mCa));
+  /* 주기관지(오른쪽이 더 굵고 가파름) + 기관지나무 */
+  g.add(P("bronchi",sweep([V(0,134.6,.8),V(2.4,133.2,.5),V(4.6,131.4,0),V(5.6,130.4,-.3)],t=>.8-.18*t,{tub:30,rad:20}),mCa));
+  g.add(P("bronchi",sweep([V(0,134.6,.8),V(-2.0,133.0,.6),V(-3.6,131.4,.2),V(-4.4,130.6,0)],t=>.88-.16*t,{tub:30,rad:20}),mCa));
+  const inL=q=>{ const s=q.x>0?1:-1, e=Math.pow((q.x-s*7.4)/5.0,2)+Math.pow((q.y-126.5)/12.5,2)+Math.pow((q.z+1.0)/6.0,2);
+    return e<.55&&q.y>diaY(q.x,q.z)+2.0&&Math.abs(q.x)>4.0; };
+  g.add(P("bronchi",bronchTree(5,[
+    {p:[5.6,130.4,-.3],d:[.45,.75,.2],len:3.2,r:.5},{p:[5.6,130.4,-.3],d:[.4,-.4,.7],len:2.8,r:.4},
+    {p:[5.6,130.4,-.3],d:[.35,-.85,-.35],len:3.8,r:.55},
+    {p:[-4.4,130.6,0],d:[-.45,.8,.05],len:3.2,r:.52},{p:[-4.4,130.6,0],d:[-.4,-.35,.75],len:2.8,r:.42},
+    {p:[-4.4,130.6,0],d:[-.35,-.85,-.35],len:3.8,r:.58}],inL),mCa));
+  /* 허파 */
+  g.add(P("lungs",lungGeo(1),mL)); g.add(P("lungs",lungGeo(-1),mL));
+  /* 폐포 — 종말세기관지 끝의 포도송이 모양 폐포주머니(확대 모형), 겉에 모세혈관 그물 */
+  const R=oRng(21), al=[];
+  const tb=[[6.6,124.6,-.6],[7.6,124.0,.3],[8.4,123.6,1.1]];
+  al.push(sweep(tb,t=>.32-.1*t,{tub:16,rad:12}));
+  [[.8,.3,.5],[.5,-.6,.6],[.9,-.1,-.2]].forEach(d=>{
+    const c0=oV(tb[2]), dd=oV(d).normalize(), e=c0.clone().addScaledVector(dd,1.3);
+    al.push(sweep([oA(c0),oA(e)],.2,{tub:6,rad:10}));
+    for(let k=0;k<10;k++){ const u=new T.Vector3(R()-.5,R()-.5,R()-.5).normalize(), s=.34+R()*.1;
+      al.push(xf(blob(s,s,s,null,16),oA(e.clone().addScaledVector(u,.5+R()*.12)))); }
+    for(let k=0;k<3;k++){ const u=new T.Vector3(R()-.5,R()-.5,R()-.5).normalize();
+      al.push(xf(blob(.3,.3,.3,null,14),oA(c0.clone().addScaledVector(dd,.45+k*.3).addScaledVector(u,.32)))); }
+  });
+  g.add(P("alveoli",oSmooth(mergeGeos(al)),mAl));
+  /* 가로막 — 근육은 방사상 섬유, 가운데는 흰 널힘줄, 뒤쪽 다리(각)는 허리뼈로 */
+  const mD=orgMat("o_dia","#ffffff",{vcol:true,dim:1,rough:.45,cc:.5,mott:.3,freq:1.2,vein:.25,veinF:1.0,veinCol:"#3a0c10",bump:.05});
+  g.add(P("diaphragm",diaphragmGeo(),mD));
+  const cr=sweep([V(2.0,110.6,-7.3),V(1.8,105,-6.4),V(1.3,99,-5.6)],t=>.62-.25*t,{tub:24,rad:14});
+  g.add(P("diaphragm",cr,mCr)); g.add(P("diaphragm",oMir(cr),mCr));
   return g;
 }
 
+/* ---------- 소화계통 ---------- */
+function liverGeo(){
+  const g=new T.SphereGeometry(1,140,96), p=g.attributes.position, v=new T.Vector3();
+  const smin=(a,b,k)=>{const h=Math.max(k-Math.abs(a-b),0)/k; return Math.min(a,b)-h*h*k*.25;};
+  for(let i=0;i<p.count;i++){
+    v.fromBufferAttribute(p,i);
+    const sx=v.x, sy0=v.y, sz0=v.z;
+    const q=Math.sqrt(Math.max(0,1-sx*sx-sz0*sz0));
+    const blunt=sx<0?Math.pow(Math.max(.02,1-sx*sx),-.3):1;     /* 오른엽 가쪽은 뭉툭 */
+    const sz=sz0*blunt;
+    const X=-2.8+sx*10.0;
+    const lobe=oSS(-1,6.5,X);                                    /* 0: 오른엽, 1: 왼엽 끝 */
+    const Z=1.4+1.4*lobe+(sz>0?6.6-1.6*lobe:5.4-2.6*lobe)*sz;
+    const front=Math.max(0,Math.min(1,sz));
+    const th=(1.0+3.7*(1-oSS(-5,6.5,X)))*(1-.62*Math.pow(front,1.4))*blunt;
+    const mid=112.7+.17*(X+6)-1.5*front;
+    const top0=mid+q*th, bot0=mid-q*th;
+    const hT=smin(top0,diaY(X,Z)-.35,.8);
+    const bot=Math.min(bot0,hT-.45*(top0-bot0));
+    let Y=q>1e-4?bot+(sy0/q*.5+.5)*(hT-bot):hT;
+    if(sy0<0) Y+=.9*Math.exp(-Math.pow((X+3.8)/1.3,2)-Math.pow((Z-5)/2.2,2));          /* 쓸개오목 */
+    if(sy0>0) Y-=.35*Math.exp(-Math.pow((X+.6)/.4,2))*front;                           /* 낫인대 고랑 */
+    p.setXYZ(i,X,Y,Z);
+  }
+  g.computeVertexNormals(); return oSmooth(g);
+}
+/* 결장: 3줄의 결장띠 사이로 팽대(주머니)가 부풀어 오른 관 */
+function colonGeo(pts,baseFn,opt){
+  const L=oLen(pts), NH=Math.round(L/2.3), e=oEnd(L,opt.capA||0,0);
+  const hb=t=>Math.pow(Math.abs(Math.sin(Math.PI*t*NH)),.45);
+  const ten=a=>{ let m=0; for(let k=0;k<3;k++){ let d=a-k*Math.PI*2/3-.4; d=Math.atan2(Math.sin(d),Math.cos(d)); m=Math.max(m,Math.exp(-d*d/.05)); } return m; };
+  const hw=opt.hw||(t=>1);
+  return sweep(pts,t=>baseFn(t)*e(t),{tub:Math.round(L*12),rad:36,
+    ang:(t,a)=>{ const w=hw(t), T_=ten(a); return 1-.05*T_*w+(.2*hb(t)*(1-.85*T_)-.1)*w; }});
+}
 function buildDigestive(){
   const g=new T.Group();
-  const mSt=mat("sto",PAL.stomach,{rough:.5}), mLi=mat("liv",PAL.liver,{rough:.5,env:.7}),
-        mGa=mat("gal",PAL.gall,{rough:.45}), mPa=mat("pan",PAL.panc,{rough:.55}),
-        mGu=mat("gut",PAL.gut,{rough:.55}), mGu2=mat("gut2",PAL.gutDeep,{rough:.55});
-  g.add(P("oral",blob(2.5,1.3,2.2,null,20),mSt,[0,159.5,3.4]));
-  g.add(P("esophagus",sweep([V(0,157,.6),V(0,148,-.8),V(0,136,-1.8),V(0,124,-1.4),V(1.4,118.5,-.6)],()=>1.1,{tub:52,rad:20}),mSt));
-  g.add(P("stomach",sweep([V(1.4,118.8,-.4),V(3.6,117.2,1.2),V(6.0,113.6,1.7),V(6.4,109.6,1.3),
-      V(4.2,107.0,.7),V(1.4,107.6,.3),V(-.8,109.6,.5)],
-      t=>[2.0+3.0*Math.sin(Math.PI*Math.pow(t,.8))-1.4*t, 1.9+2.8*Math.sin(Math.PI*Math.pow(t,.8))-1.3*t],
-      {tub:71,rad:28}),mSt));
-  g.add(P("liver",blob(9.2,5.8,7.0,v=>{
-      if(v.y>0) v.y*=.46;
-      const k=Math.max(0,v.x/9.2);
-      v.y*=1-.42*k; v.z*=1-.26*k; v.x*=1-.10*k;
-    },72),mLi,[-4.4,116.2,1.6],[0,0,0.12]));
-  g.add(P("gallbladder",blob(1.3,2.0,1.3,null,18),mGa,[-3.0,111.4,4.8]));
-  g.add(P("pancreas",sweep([V(5.6,112.6,-1.8),V(2.6,112.0,-1.2),V(-.6,111.4,-.7),V(-3.2,111.0,-.2)],
-      t=>[1.55-.75*t,1.0-.35*t],{tub:34,rad:19}),mPa));
-  const si=[];
-  for(let i=0;i<28;i++){
-    const t=i/27, y=108-t*14.5, ph=i*2.32, rr=6.0*(1-.16*Math.cos(t*Math.PI*2));
-    si.push(V(Math.cos(ph)*rr*.95, y+Math.sin(ph)*1.1, Math.sin(ph)*rr*.46+1.6));
+  const mTo=orgMat("o_tongue","#c05762",{rough:.5,cc:.5,cell:.45,cellF:5.5,cellCol:"#963444",mott:.3,freq:1.5,bump:.05});
+  const mPal=orgMat("o_pal","#d48c93",{rough:.45,cc:.5,mott:.25,freq:1.5,vein:.3,veinF:2,veinCol:"#a23845"});
+  const mEs=orgMat("o_eso","#c2766f",{rough:.45,cc:.55,vein:.3,veinF:1.0,veinCol:"#8a2630",mott:.3,freq:1.2});
+  const mSt=orgMat("o_sto","#cd7a68",{rough:.4,cc:.65,vein:.3,veinF:.55,veinCol:"#962731",mott:.35,freq:.7,bump:.06});
+  const mLi=orgMat("o_liver","#6c261d",{rough:.32,cc:.8,ccr:.14,cell:.16,cellF:2.2,cellCol:"#481812",vein:.2,veinF:.35,veinCol:"#3a0f14",mott:.35,freq:.35,bump:.04});
+  const mGa=orgMat("o_gall","#56732f",{rough:.3,cc:.85,ccr:.12,mott:.25,freq:1,vein:.25,veinF:1.2,veinCol:"#2f4a1a"});
+  const mDu=orgMat("o_duct","#a7a050",{rough:.4,cc:.6,mott:.2,freq:2});
+  const mPa=orgMat("o_panc","#d6a068",{rough:.55,cc:.3,cell:.65,cellF:2.4,cellCol:"#9e6136",mott:.35,freq:1.4,bump:.1});
+  const mSi=orgMat("o_si","#bf645c",{rough:.4,cc:.65,vein:.45,veinF:.55,veinCol:"#8c1d29",mott:.3,freq:.8});
+  const mCo=orgMat("o_colon","#a2453f",{rough:.45,cc:.6,vein:.4,veinF:.5,veinCol:"#7c1a25",mott:.35,freq:.8});
+  const mA=orgMat("o_art","#b3202d",{rough:.32,cc:.75,mott:.15,freq:2}), mV=orgMat("o_vei","#3b4d8c",{rough:.32,cc:.75,mott:.15,freq:2});
+  /* 입안 — 혀(유두 무늬·가운데 고랑)와 입천장 */
+  g.add(P("oral",oSculpt(blob(2.1,.95,3.1,null,56),v=>{
+    if(v.y<0) v.y*=.6;
+    if(v.z>0) v.x*=1-.32*Math.pow(v.z/3.1,2);
+    if(v.z<0) v.y*=1+.25*(-v.z/3.1);
+    if(v.y>0) v.y-=.16*Math.exp(-v.x*v.x/.12);
+  }),mTo,[0,158.7,3.8],[-.12,0,0]));
+  g.add(P("oral",oSculpt(blob(2.0,.22,2.8,null,40),v=>{ v.y+=.55*(1-Math.pow(v.x/2.0,2))-.25*Math.pow(v.z/2.8,2); }),mPal,[0,159.9,3.6]));
+  /* 식도 */
+  g.add(P("esophagus",sweep([V(0,153.6,0),V(.2,148,-.9),V(.5,140,-1.6),V(.9,130,-2.0),V(1.4,121,-1.5),V(2.0,116.4,-.6),V(2.6,114.4,0)],
+    .85,{tub:90,rad:22}),mEs));
+  /* 위 — 위바닥·몸통·날문방 J자, 큰굽이·작은굽이를 따라 혈관 */
+  const ST=[[3.8,116.0,-1.4],[5.0,113.9,-.9],[6.3,111.4,.5],[6.6,108.4,1.8],[5.6,105.6,3.0],[3.4,104.0,3.9],[.6,104.4,4.3],[-1.4,105.8,3.9],[-2.2,106.8,3.1]];
+  const stE=oEnd(oLen(ST),2.4,0), stTab=table([[0,2.4],[.12,3.0],[.3,3.2],[.48,3.0],[.62,2.6],[.76,2.0],[.9,1.35],[1,.95]]);
+  const stR=t=>stTab(t)*stE(t);
+  g.add(P("stomach",sweep(ST,stR,{tub:140,rad:44}),mSt));
+  {
+    const C=new T.CatmullRomCurve3(ST.map(oV)), Cc=new T.Vector3(2.4,109.6,2.0), R=oRng(11);
+    const fr=[]; for(let i=0;i<=44;i++){ const t=.1+.88*i/44, P0=C.getPointAt(t), tg=C.getTangentAt(t);
+      const out=P0.clone().sub(Cc); out.addScaledVector(tg,-out.dot(tg)).normalize();
+      const f=tg.clone().cross(out).normalize(); if(f.z<0) f.negate();
+      fr.push({P0,tg,out,f,r:stR(t)}); }
+    const A=[],Vv=[];
+    const line=(sel,sgn,off,fo)=>fr.slice(sel[0],sel[1]).map(o=>oA(o.P0.clone().addScaledVector(o.out,sgn*(o.r+off)).addScaledVector(o.f,fo)));
+    A.push(sweep(line([6,45],1,.12,0),.16,{tub:140,rad:8}));
+    Vv.push(sweep(line([6,45],1,.14,.42),.19,{tub:140,rad:8}));
+    A.push(sweep(line([3,43],-1,.1,0),.14,{tub:120,rad:8}));
+    Vv.push(sweep(line([3,43],-1,.12,.36),.17,{tub:120,rad:8}));
+    for(let i=7;i<44;i+=3) [1,-1].forEach(s=>{
+      [[1,1.3,A,0],[-1,1.0,Vv,.25]].forEach(([dir,phiMax,arr,sh])=>{
+        const o=fr[i], pts=[], wob=(R()-.5)*.9, pm=phiMax*(.6+R()*.5);
+        for(let k=0;k<=6;k++){ const ph=pm*k/6;
+          const d=o.out.clone().multiplyScalar(dir*Math.cos(ph)).addScaledVector(o.f,s*Math.sin(ph));
+          pts.push(oA(o.P0.clone().addScaledVector(d,o.r+.1).addScaledVector(o.tg,wob*ph+.25*Math.sin(ph*5+i)*ph+sh))); }
+        arr.push(sweep(pts,t=>.11*(1-.6*t),{tub:18,rad:7}));
+      });
+    });
+    g.add(P("stomach",mergeGeos(A),mA)); g.add(P("stomach",mergeGeos(Vv),mV));
   }
-  g.add(P("smallint",sweep(si,()=>1.5,{tub:240,rad:19,tension:.4}),mGu));
-  g.add(P("largeint",sweep([V(-9.4,94,-.4),V(-10.2,102,-1.2),V(-10.0,111,-1.0),V(-8.4,115.2,.2),
-      V(-3,116.6,.8),V(3,116.6,.8),V(8.4,115.0,.2),V(10.0,110,-1.0),V(9.6,101,-1.2),
-      V(8.0,95,-.8),V(3.5,92.4,-1.8),V(.6,91,-2.6)],()=>2.05,{tub:186,rad:22}),mGu2));
-  g.add(P("rectum",sweep([V(.6,91,-2.6),V(0,86.5,-2.0),V(0,83,-1.0)],t=>1.65-.5*t,{tub:24,rad:20}),mGu2));
+  /* 간 — 오른엽은 두껍고 가로막 돔에 눌린 윗면, 왼엽은 위 앞을 덮으며 얇아짐, 앞아래모서리는 날카롭게 */
+  g.add(P("liver",liverGeo(),mLi));
+  /* 쓸개 + 쓸개관·온간관·온쓸개관(샘창자로) */
+  const GB=[[-4.5,107.6,6.5],[-4.0,108.9,5.2],[-3.4,110.4,3.8],[-2.9,111.5,2.8]];
+  const gbE=oEnd(oLen(GB),1.0,0), gbT=table([[0,1.05],[.4,1.0],[.8,.65],[1,.45]]);
+  g.add(P("gallbladder",sweep(GB,t=>gbT(t)*gbE(t),{tub:40,rad:28}),mGa));
+  g.add(P("gallbladder",mergeGeos([
+    sweep([V(-3.0,111.6,3.0),V(-3.3,110.6,2.2),V(-3.7,109.4,1.6)],.24,{tub:14,rad:10}),
+    sweep([V(-2.4,112.6,2.0),V(-3.1,111.0,1.8),V(-3.7,109.4,1.6)],.26,{tub:14,rad:10}),
+    sweep([V(-3.7,109.4,1.6),V(-4.2,106.6,.9),V(-4.5,104.0,.4)],.28,{tub:24,rad:10})]),mDu));
+  /* 이자 — 머리는 샘창자 C자 고리 안, 몸통은 위 뒤로, 꼬리는 지라 쪽 */
+  const PA=[[-3.4,102.2,.6],[-2.6,103.6,.8],[-.8,104.6,.4],[1.8,105.4,-1.2],[4.6,106.6,-2.0],[7.0,107.8,-2.4],[8.4,108.6,-2.6]];
+  const paE=oEnd(oLen(PA),1.4,.6), paT=table([[0,1.7],[.15,1.8],[.32,1.25],[.5,1.15],[.7,1.0],[.86,.85],[1,.6]]);
+  g.add(P("pancreas",sweep(PA,t=>paT(t)*paE(t),{tub:90,rad:28}),mPa));
+  /* 작은창자 — 샘창자 C자 고리 → 빈창자·돌창자가 세 겹으로 촘촘히 감김 → 막창자로 */
+  const DUO=[[-2.2,106.8,3.1],[-3.6,106.6,1.8],[-4.6,105.4,.4],[-4.9,102.6,-.2],[-4.4,100.2,-.4],[-2.4,99.2,-.8],[.6,99.2,-.9],[2.8,100.2,-.6],[3.6,102.0,0],[3.2,103.0,.8]];
+  const si=DUO.slice(); si.push([5.4,101.4,1.4]);
+  const xr=y=>y>97?6.4:y>94.5?6.0:y>91.8?5.2:4.2;
+  let dir=-1;
+  [{z:1.7,rows:[98.8,96.0,93.2,90.4]},{z:4.3,rows:[90.4,93.2,96.0,98.8]},{z:6.9,rows:[98.8,96.0,93.2]}].forEach((Ly,li)=>{
+    Ly.rows.forEach((y,ri)=>{
+      const w=xr(y), n=Math.round(w*2/1.0);
+      for(let k=0;k<=n;k++){ const u=k/n, x=dir<0?w-2*w*u:-w+2*w*u, ph=x*1.3+li*1.7;
+        si.push([x,y+.55*Math.sin(ph),Ly.z+.6*Math.cos(ph*.8+ri)]); }
+      dir=-dir;
+    });
+  });
+  si.push([-6.6,93.6,5.2],[-7.4,94.4,3.2],[-8.0,94.8,2.0]);
+  const siL=oLen(si), duoF=oLen(DUO)/siL;
+  g.add(P("smallint",sweep(si,t=>t<duoF?1.25:1.15-.22*(t-duoF)/(1-duoF),{tub:Math.round(siL*4.5),rad:18}),mSi));
+  /* 큰창자 — 막창자(+막창자꼬리)·오름·가로(처짐)·내림·구불결장, 결장띠와 팽대 */
+  const CO=[[-8.6,92.6,1.8],[-9.0,94.6,1.4],[-9.6,98.0,.2],[-9.8,102.0,-.4],[-9.4,104.8,.6],[-7.4,104.6,4.2],[-4.0,102.6,6.8],[0,101.4,7.6],
+    [4.0,102.4,7.0],[7.4,105.2,4.6],[9.0,107.6,1.2],[9.6,105.0,-1.0],[9.8,100,-1.0],[9.6,96.2,-.8],[8.4,93.2,-1.0],[5.6,91.6,-2.2],[2.6,92.4,-3.0],[.8,91.0,-3.6]];
+  const coT=table([[0,2.5],[.1,2.2],[.25,2.0],[.4,1.85],[.6,1.75],[.72,1.55],[.85,1.45],[1,1.4]]);
+  g.add(P("largeint",colonGeo(CO,coT,{capA:2.2,hw:t=>1-oSS(.86,1,t)*.8}),mCo));
+  g.add(P("largeint",sweep([V(-8.0,92.6,1.0),V(-7.0,91.0,1.4),V(-6.0,90.6,2.4),V(-5.4,91.4,2.8)],
+    (()=>{const e=oEnd(4.2,0,.35); return t=>.34*e(t);})(),{tub:30,rad:12}),mCo));
+  /* 가로결장을 따라가는 변연동맥 */
+  const tc=new T.CatmullRomCurve3(CO.map(oV)), marg=[];
+  for(let i=0;i<=30;i++){ const t=.22+.36*i/30, q=tc.getPointAt(t); marg.push([q.x,q.y+coT(t)*1.02+.12,q.z-.3]); }
+  g.add(P("largeint",sweep(marg,.15,{tub:90,rad:8}),mA));
+  /* 곧창자 — 팽대부 → 항문관 */
+  g.add(P("rectum",sweep([V(.8,91.0,-3.6),V(.3,89.2,-4.4),V(0,87.0,-4.0),V(0,85.4,-2.6),V(0,84.0,-1.6)],
+    table([[0,1.45],[.3,1.8],[.55,1.9],[.8,1.1],[1,.7]]),{tub:60,rad:28}),mCo));
   return g;
 }
 
+/* ---------- 비뇨계통 ---------- */
+function kidneyGeo(){
+  return oSculpt(blob(2.9,5.5,1.9,null,80),v=>{
+    const ty=v.y/5.5;
+    if(v.x<0){ const d=Math.exp(-Math.pow(v.y/2.0,2))*Math.exp(-Math.pow(v.z/1.5,2)); v.x+=1.6*d*Math.min(1,-v.x/2.9); }
+    v.x-=.5*ty*ty; v.z*=1-.12*ty*ty;
+  });
+}
+function bladderGeo(){
+  return oSculpt(blob(3.3,2.9,3.0,null,72),v=>{
+    if(v.y<0){ const k=Math.pow(-v.y/2.9,2); v.x*=1-.45*k; v.z*=1-.45*k; v.y*=1+.15*k; }
+    else v.y*=.85;
+    v.y+=.45*Math.exp(-(v.x*v.x+Math.pow(v.z-2.3,2))/1.2)*(v.y>0?1:0);
+  });
+}
 function buildUrinary(sex){
   const g=new T.Group();
-  const mK=mat("kid",PAL.kidney,{rough:.48,env:.7}), mU=mat("ure","#c9b45c",{rough:.45}),
-        mBl=mat("bla",PAL.bladder,{rough:.42,env:.8}), mAd=mat("adr",PAL.adrenal,{rough:.55});
-  const kid=blob(2.7,5.4,3.0,v=>{
-    const d=Math.exp(-Math.pow(v.y/2.1,2));
-    if(v.x<0) v.x+=2.3*d*(-v.x/2.7);
-    const t=v.y/5.4; v.z*=1-.18*t*t; v.x*=1-.12*t*t;
-  },64);
-  g.add(P("kidney",kid,mK,[6.9,115.6,-5.0],[0,0,-0.12]));
-  g.add(P("kidney",mirrorX(kid),mK,[-6.9,114.6,-5.0],[0,0,0.12]));
-  const adr=blob(2.3,1.2,1.9,v=>{if(v.y<0) v.y*=.45;},22);
-  g.add(P("adrenal",adr,mAd,[6.4,120.6,-5.0]));
-  g.add(P("adrenal",adr.clone(),mAd,[-6.4,119.6,-5.0]));
-  const ur=sweep([V(4.8,114.6,-4.6),V(4.2,104,-4.0),V(2.6,96,-2.6),V(1.2,92.8,-1.2)],()=>.45,{tub:40,rad:16});
-  g.add(P("ureter",ur,mU)); g.add(P("ureter",mirrorX(ur),mU,[0,-1,0]));
-  g.add(P("bladder",blob(3.7,3.2,3.3,null,40),mBl,[0,91.4,1.2]));
+  const mK=orgMat("o_kid","#84352d",{rough:.32,cc:.75,ccr:.16,mott:.35,freq:.8,vein:.3,veinF:.8,veinCol:"#4e1418",bump:.05});
+  const mU=orgMat("o_ure","#e0cb98",{rough:.4,cc:.6,mott:.25,freq:2,vein:.3,veinF:2.2,veinCol:"#b0484e"});
+  const mBl=orgMat("o_bla","#d39885",{rough:.42,cc:.6,mott:.4,freq:.9,vein:.45,veinF:.9,veinCol:"#56508e",bump:.08});
+  const mAd=orgMat("o_adr","#d0973f",{rough:.5,cc:.4,cell:.55,cellF:3,cellCol:"#9a5f1e",mott:.35,freq:1.6,bump:.08});
+  const mA=orgMat("o_art","#b3202d",{rough:.32,cc:.75,mott:.15,freq:2}), mV=orgMat("o_vei","#3b4d8c",{rough:.32,cc:.75,mott:.15,freq:2});
+  const cA=orgMat("o_artC","#b3202d",{rough:.4,cc:.3,op:.32}), cV=orgMat("o_veiC","#3b4d8c",{rough:.4,cc:.3,op:.32});
+  const ctx=m=>{ m.userData.ctx=true; m.renderOrder=-1; return m; };
+  /* 위치 참고용 대동맥(왼쪽)·아래대정맥(오른쪽) — 선택되지 않는 맥락 */
+  const AO=[[1.0,122,-3.6],[1.0,110,-3.6],[1.0,100,-3.4],[.8,98.4,-3.2]], IV=[[-1.8,122,-3.0],[-1.8,110,-3.0],[-1.6,100,-2.8],[-1.2,97.6,-3.4]];
+  g.add(ctx(P(undefined,sweep(AO,.95,{tub:40,rad:18}),cA))); g.add(ctx(P(undefined,sweep(IV,1.05,{tub:40,rad:18}),cV)));
+  [1,-1].forEach(s=>{
+    g.add(ctx(P(undefined,sweep([[.8,98.4,-3.2],[s*2.6,95.6,-2.8],[s*4.4,93.0,-2.2],[s*5.6,90.4,.4]],.6,{tub:30,rad:14}),cA)));
+    g.add(ctx(P(undefined,sweep([[-1.2,97.6,-3.4],[s*2.2,95.2,-3.6],[s*4.0,93.0,-3.0],[s*5.2,90.2,-.4]],.68,{tub:30,rad:14}),cV)));
+  });
+  const kg=kidneyGeo(), adr=oSculpt(blob(1.5,1.3,.55,null,32),v=>{ v.x*=1-.55*Math.max(0,v.y/1.3); });
+  const pel=mergeGeos([
+    sweep([V(.3,.3,0),V(-1.2,-.2,0),V(-2.4,-1.0,.2),V(-2.8,-2.2,.3)],t=>1.1*(1-t)+.32,{tub:24,rad:16}),
+    sweep([V(.3,.3,0),V(1.0,2.8,0)],t=>.55-.15*t,{tub:10,rad:12}),
+    sweep([V(.3,.3,0),V(1.6,.4,0)],t=>.55-.15*t,{tub:10,rad:12}),
+    sweep([V(.3,.3,0),V(1.0,-2.6,0)],t=>.55-.15*t,{tub:10,rad:12})]);
+  [1,-1].forEach(s=>{
+    const M=oMtx([s*6.6,s>0?114.4:113.0,-5.2],[0,s*.5,s*.16]);
+    const loc=p=>oTP(M,[s*p[0],p[1],p[2]]);
+    const mg=g2=>s>0?g2:mirrorX(g2);
+    g.add(P("kidney",oGeo(mg(kg),M),mK));
+    g.add(P("ureter",oGeo(mg(pel),M),mU));
+    /* 부신 — 오른쪽은 위극 꼭대기에 세모, 왼쪽은 안쪽 모서리를 따라 반달 */
+    g.add(P("adrenal",oGeo(mg(adr),oMtx(loc(s>0?[-1.5,5.0,0]:[-.4,5.6,0]),[0,s*.5,s*(s>0?.5:.16)])),mAd));
+    /* 콩팥동맥(뒤)·콩팥정맥(앞) */
+    const ha=loc([-1.6,.4,-.5]), hv=loc([-1.6,.1,.6]);
+    g.add(P("kidney",sweep([ha,[(ha[0]+1.0)/2,ha[1]+.3,-4.6],[1.0,ha[1]+.4,-3.6]],.34,{tub:20,rad:12}),mA));
+    g.add(P("kidney",sweep([hv,[(hv[0]-1.8)/2,hv[1]+.2,-3.2+(s>0?.9:0)],[-1.8,hv[1]+.3,-3.0]],.42,{tub:20,rad:12}),mV));
+    /* 요관 — 큰허리근 앞을 내려와 골반 가장자리에서 엉덩혈관을 건너 방광 뒤아래로 */
+    const ex=loc([-2.8,-2.2,.3]);
+    g.add(P("ureter",sweep([ex,[s*4.4,107,-4.4],[s*4.2,100.5,-3.8],[s*4.8,95.2,-3.0],[s*5.4,92.2,-1.8],[s*3.8,90.6,-1.0],[s*2.0,90.4,-.6]],
+      t=>.3+.04*Math.sin(t*40),{tub:120,rad:12}),mU));
+  });
+  g.add(P("bladder",bladderGeo(),mBl,[0,92.0,1.2]));
   g.add(P("urethra", sex==="m"
-    ? sweep([V(0,88.4,1.4),V(0,86.4,2.0),V(0,84,4.2),V(0,79.5,5.6)],()=>.38,{tub:31,rad:16})
-    : sweep([V(0,88.4,1.2),V(0,86.4,1.8)],()=>.38,{tub:12,rad:16}), mU));
+    ? sweep([[0,89.2,1.1],[0,87.8,.9],[0,86.4,1.3]].concat(oOff(PEN,.5)),.3,{tub:90,rad:12})
+    : sweep([V(0,89.2,1.1),V(0,87.6,1.7),V(0,86.2,2.4)],.3,{tub:20,rad:12}), mU));
   return g;
 }
 
+/* ---------- 생식계통 ---------- */
 function buildReproductive(sex){
   const g=new T.Group();
-  const mR=mat("rep",PAL.repro,{rough:.48,env:.75}), mR2=mat("rep2",PAL.reproDeep,{rough:.5}),
-        mG=mat("gon",PAL.gonad,{rough:.45,env:.8});
+  const ctxBl=orgMat("o_blaC","#d39885",{rough:.45,cc:.3,op:.28});
+  const cb=P(undefined,bladderGeo(),ctxBl,sex==="f"?[0,85.8,1.13]:[0,92.0,1.2],null,sex==="f"?[.94,.9326,.94]:null);
+  cb.userData.ctx=true; cb.renderOrder=-1; g.add(cb);
+  const mA=orgMat("o_art","#b3202d",{rough:.32,cc:.75,mott:.15,freq:2});
   if(sex==="f"){
-    g.add(P("uterus",blob(3.2,3.8,2.5,v=>{const t=(3.8-v.y)/7.6; v.x*=1-.55*Math.pow(t,1.8); v.z*=1-.5*Math.pow(t,1.8);},36),
-      mR,[0,93.5,-.6],[-0.18,0,0]));
-    const tb=sweep([V(2.6,95.6,-.4),V(4.6,96.6,-.2),V(6.2,95.4,.2)],()=>.45,{tub:27,rad:16});
-    g.add(P("tube",tb,mR2)); g.add(P("tube",mirrorX(tb),mR2));
-    for(let i=0;i<5;i++){const a=i/5*Math.PI*2;
-      const fi=sweep([V(6.2,95.4,.2),V(6.9+Math.cos(a)*.5,95.1+Math.sin(a)*.7,.3+Math.sin(a)*.5)],()=>.16,{tub:9,rad:16});
-      g.add(P("tube",fi,mR2)); g.add(P("tube",mirrorX(fi),mR2));}
-    g.add(P("ovary",blob(1.5,1.0,1.1,null,20),mG,[7.2,94.8,.1]));
-    g.add(P("ovary",blob(1.5,1.0,1.1,null,20),mG,[-7.2,94.8,.1]));
-    g.add(P("cervix",blob(1.3,1.3,1.2,null,20),mR2,[0,89.4,-.2]));
-    g.add(P("vagina",sweep([V(0,89,-.2),V(0,86,.4),V(0,83.6,1.2)],t=>1.15-.25*t,{tub:21,rad:19}),mR2));
+    const mUt=orgMat("o_ut","#c4686e",{rough:.38,cc:.7,ccr:.18,mott:.35,freq:.9,vein:.4,veinF:.9,veinCol:"#7d1f2b",bump:.05});
+    const mTb=orgMat("o_tube","#d08884",{rough:.4,cc:.65,mott:.3,freq:2,vein:.35,veinF:2.2,veinCol:"#9a2834"});
+    const mOv=orgMat("o_ov","#dcc0b2",{rough:.45,cc:.5,cell:.3,cellF:2.4,cellCol:"#b48a80",mott:.35,freq:1.8,vein:.3,veinF:1.8,veinCol:"#a4404c",bump:.06});
+    const mCx=orgMat("o_cx","#c97c86",{rough:.4,cc:.6,mott:.3,freq:1.5});
+    const mVa=orgMat("o_vag","#c46679",{rough:.42,cc:.6,mott:.3,freq:1.4,vein:.3,veinF:1.5,veinCol:"#7c2238"});
+    /* 자궁 — 서양배 모양, 앞으로 기울어(전경·전굴) 방광 위에 얹힘 */
+    const UM=oMtx([0,89.6,-1.4],[.38,0,0]);
+    const ut=oSculpt(blob(2.6,3.8,1.75,null,64),v=>{
+      const t=Math.max(0,(3.8-v.y)/7.6), k=Math.pow(t,1.6); v.x*=1-.55*k; v.z*=1-.35*k;
+      if(v.y>1.7) v.x*=1+.10*Math.min(1,(v.y-1.7)/1.4);
+    });
+    g.add(P("uterus",oGeo(ut,UM),mUt));
+    /* 자궁목 → 질 */
+    const cxTop=oTP(UM,[0,-3.0,0]), cxBot=oTP(UM,[0,-4.6,-.2]);
+    g.add(P("cervix",sweep([cxTop,cxBot],(()=>{const e=oEnd(1.7,0,.9);return t=>1.15*e(t);})(),{tub:20,rad:28}),mCx));
+    g.add(P("vagina",sweep([V(0,86.4,-3.6),V(0,84.6,-2.8),V(0,82.0,-1.4),V(0,79.6,.4)],t=>1.35-.25*t,{tub:40,rad:24}),mVa));
+    [1,-1].forEach(s=>{
+      /* 자궁관 — 좁은 협부 → 넓은 팽대부 → 깔때기 끝의 술(난관채)이 난소를 감쌈 */
+      const cor=oTP(UM,[s*2.1,2.5,.2]);
+      const TB=[cor,[s*3.4,91.6,.2],[s*4.8,91.7,-.3],[s*6.2,91.2,-1.0],[s*7.0,90.0,-1.8],[s*6.8,88.6,-2.4],[s*6.1,88.0,-2.4]];
+      g.add(P("tube",sweep(TB,t=>.2+.32*oSS(.25,.75,t)+.38*oSS(.86,1,t),{tub:80,rad:16,cap:false}),mTb));
+      const e=oV(TB[6]), td=e.clone().sub(oV(TB[5])).normalize();
+      const u=new T.Vector3(0,1,0).cross(td).normalize(), w=td.clone().cross(u).normalize(), fi=[];
+      for(let k=0;k<10;k++){ const a=k/10*Math.PI*2, rd=u.clone().multiplyScalar(Math.cos(a)).addScaledVector(w,Math.sin(a));
+        const b=e.clone().addScaledVector(rd,.5);
+        fi.push(sweep([oA(b),oA(b.clone().addScaledVector(td,.5).addScaledVector(rd,.35)),oA(b.clone().addScaledVector(td,1.0).addScaledVector(rd,.75))],
+          t=>.14*(1-.55*t),{tub:10,rad:8})); }
+      g.add(P("tube",mergeGeos(fi),mTb));
+      /* 난소 — 아몬드 모양, 겉에 난포가 볼록 */
+      const R=oRng(s>0?31:37), fol=[]; for(let k=0;k<9;k++) fol.push(new T.Vector3(R()-.5,R()-.5,R()-.5).normalize());
+      const ov=oSculpt(blob(1.6,.95,.8,null,48),v=>{
+        const nn=new T.Vector3(v.x/1.6,v.y/.95,v.z/.8).normalize(); let b=0;
+        fol.forEach(f=>{ const d=nn.angleTo(f); b+=Math.exp(-d*d/.05); });
+        v.multiplyScalar(1+.11*b);
+      });
+      g.add(P("ovary",ov,mOv,[s*5.6,88.8,-1.6],[0,0,s*1.0]));
+      g.add(P("ovary",sweep([[s*4.3,89.2,-1.0],[s*3.2,89.8,-.4],oTP(UM,[s*1.9,1.6,0])],.17,{tub:16,rad:10}),mTb));
+      /* 난소동맥 */
+      g.add(P("ovary",sweep([[s*6.4,94.0,-2.6],[s*6.6,91.0,-2.4],[s*6.0,89.4,-1.9]],.13,{tub:20,rad:8}),mA));
+    });
   }else{
-    g.add(P("seminal",blob(1.5,1.1,1.0,null,18),mR2,[2.4,91.6,-2.6],[0,0.4,0]));
-    g.add(P("seminal",blob(1.5,1.1,1.0,null,18),mR2,[-2.4,91.6,-2.6],[0,-0.4,0]));
-    g.add(P("prostate",blob(2.2,1.8,1.9,null,24),mR,[0,88.2,.6]));
-    const vs=sweep([V(2.3,79.5,1.4),V(3.4,84,-1.0),V(2.6,89.5,-2.2),V(1.0,89.0,-1.0)],()=>.35,{tub:37,rad:16});
-    g.add(P("vas",vs,mR2)); g.add(P("vas",mirrorX(vs),mR2));
-    g.add(P("penis",sweep([V(0,86.6,2.2),V(0,83,4.6),V(0,79.4,5.6)],t=>1.35-.15*t,{tub:27,rad:22}),mR));
-    g.add(P("testis",blob(1.9,2.3,1.9,null,26),mG,[2.4,78,1.8]));
-    g.add(P("testis",blob(1.9,2.3,1.9,null,26),mG,[-2.4,77.4,1.8]));
-    const ep=sweep([V(4.0,79.8,1.0),V(4.4,78,.4),V(4.0,76.2,.9)],()=>.42,{tub:21,rad:16});
-    g.add(P("epididymis",ep,mR2)); g.add(P("epididymis",mirrorX(ep),mR2));
+    const mTe=orgMat("o_tes","#d8b7b2",{rough:.32,cc:.8,ccr:.14,mott:.25,freq:1.2,vein:.45,veinF:1.3,veinCol:"#4f5d9e"});
+    const mEp=orgMat("o_epi","#b56a73",{rough:.4,cc:.6,cell:.4,cellF:3.4,cellCol:"#7e3a46",mott:.3,freq:2});
+    const mVd=orgMat("o_vas","#e2cdb8",{rough:.4,cc:.6,mott:.2,freq:2});
+    const mSv=orgMat("o_sv","#cf9f86",{rough:.45,cc:.5,cell:.35,cellF:3,cellCol:"#9a6248",mott:.35,freq:1.6,bump:.08});
+    const mPr=orgMat("o_pro","#c58c78",{rough:.45,cc:.45,cell:.35,cellF:2.2,cellCol:"#8e5642",mott:.35,freq:1.4,bump:.07});
+    const mPe=orgMat("o_pen","#bd7576",{rough:.4,cc:.55,mott:.3,freq:1.2,vein:.35,veinF:1.1,veinCol:"#4c4e8c"});
+    const mGl=orgMat("o_gl","#b25463",{rough:.32,cc:.75,mott:.25,freq:1.6});
+    /* 전립샘 — 밤 모양, 방광목 아래에서 요도를 감쌈 */
+    g.add(P("prostate",oSculpt(blob(2.0,1.55,1.5,null,48),v=>{
+      const t=(1.55-v.y)/3.1; v.x*=1-.4*t; v.z*=1-.3*t;
+      if(v.z<0) v.z+=.25*Math.exp(-v.x*v.x/.16);
+    }),mPr,[0,88.0,.6]));
+    /* 음경 — 해면체 2개(등쪽)·요도해면체(배쪽)·귀두·음경다리 */
+    const cv=[1,-1].map(s=>sweep(oOff(PEN,-.3,s*.55),t=>.64-.08*t,{tub:60,rad:20}));
+    const sp=sweep(oOff(PEN,.55),t=>.45+.5*Math.pow(Math.max(0,1-t/.18),2),{tub:60,rad:20});
+    const cru=[1,-1].map(s=>sweep([[s*.45,85.9,4.2],[s*1.5,85.2,2.6],[s*2.6,84.6,.6]],t=>.55-.22*t,{tub:24,rad:14}));
+    g.add(P("penis",mergeGeos(cv.concat(cru,[sp])),mPe));
+    const pe=oV(PEN[4]), td=pe.clone().sub(oV(PEN[3])).normalize();
+    const gl=oSculpt(blob(1.12,1.35,1.1,null,48),v=>{ const t=Math.max(0,(1.35-v.y)/2.7);      /* +y: 몸쪽(관상) */
+      const k=Math.pow(t,1.5); v.x*=1-.45*k; v.z*=1-.45*k; if(v.y>.9) v.y=.9+(v.y-.9)*.4; });
+    gl.applyMatrix4(new T.Matrix4().makeRotationFromQuaternion(new T.Quaternion().setFromUnitVectors(new T.Vector3(0,-1,0),td)));
+    gl.translate(pe.x+td.x*.7,pe.y+td.y*.7,pe.z+td.z*.7); gl.computeVertexNormals(); oSmooth(gl);
+    g.add(P("penis",gl,mGl));
+    [1,-1].forEach(s=>{
+      /* 고환 — 위극이 앞으로 기운 달걀꼴, 뒤가장자리를 부고환이 덮음 */
+      const TM=oMtx([s*2.1,s>0?79.0:79.6,5.4],[.3,0,0]);
+      g.add(P("testis",oGeo(blob(1.3,2.0,1.55,null,48),TM),mTe));
+      const EP=[[.2,2.1,-.3],[.35,1.6,-1.25],[.4,.4,-1.7],[.35,-.9,-1.65],[.2,-1.9,-1.1],[.1,-2.2,-.4]].map(q=>oTP(TM,[s*q[0],q[1],q[2]]));
+      g.add(P("epididymis",sweep(EP,table([[0,.55],[.2,.8],[.45,.5],[.7,.42],[.9,.5],[1,.4]]),{tub:40,rad:16}),mEp));
+      /* 정관 — 부고환 꼬리 → 정삭 → 샅굴 → 골반벽 → 요관 위로 → 방광 뒤 팽대부 → 사정관 */
+      const t0=oV(EP[5]);
+      const VS=[oA(t0),[t0.x+s*.1,t0.y+1.2,t0.z-.9],[s*2.8,82.2,4.8],[s*3.4,85.0,6.6],[s*4.0,87.6,7.6],[s*5.6,89.8,5.6],
+        [s*6.0,91.2,2.0],[s*4.6,91.2,-1.6],[s*2.4,90.4,-2.4],[s*1.0,89.2,-1.4],[s*.35,88.4,-.2]];
+      g.add(P("vas",sweep(VS,t=>.27+.28*Math.exp(-Math.pow((t-.85)/.05,2)),{tub:140,rad:12}),mVd));
+      /* 정낭 — 방광 뒤에서 위가쪽으로 뻗은 울퉁불퉁한 주머니 */
+      const SV=[[s*.9,89.6,-1.8],[s*2.2,90.6,-2.6],[s*3.6,91.6,-2.8],[s*4.4,92.4,-2.4]];
+      const svE=oEnd(oLen(SV),.6,.8);
+      g.add(P("seminal",sweep(SV,t=>(.75+.2*Math.sin(t*Math.PI*7))*svE(t),{tub:60,rad:20,
+        ang:(t,a)=>1+.12*Math.sin(a*3+t*20)}),mSv));
+    });
   }
   return g;
 }
