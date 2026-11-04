@@ -5397,13 +5397,26 @@ function exSetup(){
   Object.values(groups).forEach(g=>{
     g.meshes.forEach(m=>{ const s=m.userData.side, so=g.def.o.length>4&&!/^(pelvis|lumbar|thorax|neck)$/.test(g.def.o)?g.def.o:g.def.o, ko=si(/^(pelvis|lumbar|thorax|neck)$/.test(g.def.o)?g.def.o:g.def.o+s), ki=si(/^(pelvis|lumbar|thorax|neck)$/.test(g.def.i)?g.def.i:g.def.i+s);
       const e=m.userData.ends; if(!e) return; const co=C[EX_SEG[ko]];
-      const swap=e[1].distanceTo(co)<e[0].distanceTo(co); m.userData.len={o:swap?e[1]:e[0],i:swap?e[0]:e[1],ko:ko,ki:ki}; });
+      const swap=e[1].distanceTo(co)<e[0].distanceTo(co); m.userData.len={o:swap?e[1]:e[0],i:swap?e[0]:e[1],ko:ko,ki:ki};
+      /* 위팔두갈래근 형상은 힘줄이 노뼈거친면에 닿기 전, 팔꿈치 관절보다 위에서 끝난다.
+         그 끝을 정지점으로 쓰면 팔꿈치를 굽힐수록 길이가 늘어나는 것처럼 계산되므로,
+         관절 중심에서 2.5 cm 먼쪽(노뼈거친면 근처)으로 옮긴다. (위팔세갈래근의 팔꿈치머리는 관절 뒤쪽이 맞아 그대로 둔다) */
+      const q=m.userData.len, sg=EX_INS_FIX[g.def.key]?exSegDir(J,EX_SEG[ki]):null;
+      if(sg){ const t=q.i.clone().sub(sg.c).dot(sg.d); if(t<0.02) q.i=q.i.clone().addScaledVector(sg.d,0.025-t); } });
   });
   if(groups.rf){ groups.rf.meshes=groups.quad.meshes.filter(m=>/rectus femoris/i.test(m.userData.anatomyName)); groups.rf.mats=groups.rf.meshes.map(m=>m.userData.mat0); groups.rf.sid=groups.rf.meshes.length?groups.rf.meshes[0].userData.id:null; }
   J.floor=Math.min(JR.heel.y,JR.toe.y)-0.012;
   ex.root=root; ex.J=J; ex.bones=bones; ex.skeleton=skeleton; ex.skinned=skinned; ex.orig=mus; ex.rigid=rigid; ex.groups=groups; ex.twistSk=twistSk;
   ex.ready=true;
   return true;
+}
+const EX_INS_FIX={bic:1};   /* 형상이 실제 부착부보다 먼저 끝나 정지점을 보정할 근육 */
+/* 분절의 몸쪽 관절 중심과 먼쪽 방향 (길이 계산의 정지점 보정용) */
+function exSegDir(J,name){
+  const sd=name.slice(-1), JJ=J[sd]; if(!JJ) return null;
+  const pr={hum:["gh","elbow"],fore:["elbow","wrist"],fem:["hip","knee"],shank:["knee","ankle"],foot:["ankle","toe"]}[name.slice(0,-1)];
+  if(!pr||!JJ[pr[0]]||!JJ[pr[1]]) return null;
+  return {c:JJ[pr[0]],d:JJ[pr[1]].clone().sub(JJ[pr[0]]).normalize()};
 }
 /* ---------- 4) 자세 → 분절 행렬 ---------- */
 const EX_SIDE0={sh:[90,0,0],elb:0,sc:[0,0],hip:[0,0],kn:0,an:0,wr:[0,0]};
