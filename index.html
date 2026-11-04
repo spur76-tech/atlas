@@ -1430,7 +1430,7 @@ function fxMat(kind,color,o){
     sh.uniforms.uFib={value:fib};
     sh.uniforms.uSwap={value:swap};
     sh.uniforms.uTendon={value:new T.Color(o.tendon||"#d6c8a6").convertSRGBToLinear()};
-    sh.uniforms.uEdge={value:(kind==="muscle"||kind==="muscleB")?1.0:0.0};
+    sh.uniforms.uEdge={value:o.edge!==undefined?o.edge:((kind==="muscle"||kind==="muscleB")?1.0:0.0)};
     sh.fragmentShader="uniform float uBump;uniform float uFib;uniform float uSwap;uniform float uEdge;uniform vec3 uTendon;\n"
       +NOISE+"\n"+AA+"\n"+DETAIL[kind]+"\n"+sh.fragmentShader;
     sh.fragmentShader=sh.fragmentShader.replace("#include <clipping_planes_fragment>",
@@ -1463,7 +1463,7 @@ function fxMat(kind,color,o){
   m.customProgramCacheKey=function(){return "fx_"+kind+"_"+swap;};
   return m;
 }
-const KIND={bone:"bone",bone2:"bone",cavity:"bone",cart:"bone",mus:"muscle",mus2:"muscle",musB:"muscleB",musB2:"muscleB",musH:"muscleB",musH2:"muscleB",dia:"muscleB",
+const KIND={bone:"bone",bone2:"bone",cavity:"bone",cart:"bone",mus:"muscle",mus2:"muscle",musT:"muscleB",musO:"muscleB",musB:"muscleB",musB2:"muscleB",musH:"muscleB",musH2:"muscleB",dia:"muscleB",
  brain:"brain",nerve:"nerve",cord:"nerve",
  art:"vessel",vei:"vessel",cap:"vessel",air:"vessel",ring:"vessel",ure:"vessel",
  hrt:"organ",lung:"organ",sto:"organ",liv:"organ",gal:"organ",pan:"organ",
@@ -1833,20 +1833,74 @@ function buildMuscular(sex){
   /* 앞톱니근 */
   const ser=torsoPatch(PR,sh-22,sh-10,PI*0.02,PI*0.16,-1.35,0.8,null,24,20);
   g.add(P("pectoralis",ser,mH2)); g.add(P("pectoralis",mirrorX(ser),mH2));
-  /* 배곧은근 — 세로 결 + 나눔힘줄 */
-  const ry0=cr+(sex==="m"?22:20), ry1=cr+(sex==="m"?43:39);
-  const rec=torsoPatch(PR,ry0,ry1,PI*0.512,PI*0.632,-0.90,2.1,
-    t=>0.92-0.18*t,34,16);
-  g.add(P("rectus",rec,mM)); g.add(P("rectus",mirrorX(rec),mM));
-  for(let i=1;i<=3;i++){
-    const yy=ry0+(ry1-ry0)*i/4;
-    const insc=torsoPatch(PR,yy-0.30,yy+0.30,PI*0.516,PI*0.628,-1.30,0.5,null,4,14);
-    g.add(P("rectus",insc,mM2)); g.add(P("rectus",mirrorX(insc),mM2));
+  /* ===== 배벽 — 몸통 곡면을 따라 붙는 판 (fn(u,v) → [높이, 각도, 안쪽 오프셋, 바깥 오프셋, uv]) ===== */
+  const cl=(v,a,b)=>Math.max(a,Math.min(b,v)), lp=(a,b,t)=>a+(b-a)*t;
+  const ss=(a,b,v)=>{const t=cl((v-a)/(b-a),0,1); return t*t*(3-2*t);};
+  const dome=(u,v,pu,pv,f)=>f+(1-f)*Math.pow(Math.sin(PI*cl(u,0,1)),pu)*Math.pow(Math.sin(PI*cl(v,0,1)),pv);
+  const wpt=(y,ang,off)=>{ const pr=profAt(PR,y), ca=Math.cos(ang), sa=Math.sin(ang);
+    const rx=(ca>=0?pr.rxR:pr.rxL)+off, rz=(sa>=0?pr.rzf:pr.rzb)+off; return [pr.cx+rx*ca,y,pr.cz+rz*sa]; };
+  const angX=(y,x)=>{ const pr=profAt(PR,y); return Math.acos(cl(x/(pr.rxR-0.9),-0.995,0.995)); };   /* 정중선에서 x만큼 떨어진 앞면 각도 */
+  const wrap=(nu,nv,fn,normUV)=>{
+    const C=nu+1,R=nv+1,N=C*R,pos=new Float32Array(N*6),uvA=new Float32Array(N*4),idx=[],raw=[];
+    for(let j=0;j<R;j++)for(let i=0;i<C;i++){ const q=fn(i/nu,j/nv),k=j*C+i;
+      pos.set(wpt(q[0],q[1],q[3]),k*3); pos.set(wpt(q[0],q[1],q[2]),(N+k)*3); raw.push(q.length>4?[q[4],q[5]]:[i/nu,j/nv]); }
+    let a0=Infinity,a1=-Infinity,b0=Infinity,b1=-Infinity;
+    if(normUV) raw.forEach(r=>{a0=Math.min(a0,r[0]);a1=Math.max(a1,r[0]);b0=Math.min(b0,r[1]);b1=Math.max(b1,r[1]);});
+    raw.forEach((r,k)=>{ const u=normUV?(r[0]-a0)/((a1-a0)||1):r[0], v=normUV?(r[1]-b0)/((b1-b0)||1):r[1];
+      uvA[k*2]=u; uvA[k*2+1]=v; uvA[(N+k)*2]=u; uvA[(N+k)*2+1]=v; });
+    const at=(L,j,i)=>L*N+j*C+i;
+    for(let j=0;j<nv;j++)for(let i=0;i<nu;i++){
+      idx.push(at(0,j,i),at(0,j+1,i),at(0,j,i+1), at(0,j,i+1),at(0,j+1,i),at(0,j+1,i+1));
+      idx.push(at(1,j,i),at(1,j,i+1),at(1,j+1,i), at(1,j,i+1),at(1,j+1,i+1),at(1,j+1,i)); }
+    for(let i=0;i<nu;i++){ idx.push(at(0,0,i),at(0,0,i+1),at(1,0,i), at(0,0,i+1),at(1,0,i+1),at(1,0,i));
+      idx.push(at(0,nv,i),at(1,nv,i),at(0,nv,i+1), at(0,nv,i+1),at(1,nv,i),at(1,nv,i+1)); }
+    for(let j=0;j<nv;j++){ idx.push(at(0,j,0),at(1,j,0),at(0,j+1,0), at(0,j+1,0),at(1,j,0),at(1,j+1,0));
+      idx.push(at(0,j,nu),at(0,j+1,nu),at(1,j,nu), at(0,j+1,nu),at(1,j+1,nu),at(1,j,nu)); }
+    const gg=new T.BufferGeometry(); gg.setAttribute("position",new T.BufferAttribute(pos,3)); gg.setAttribute("uv",new T.BufferAttribute(uvA,2));
+    gg.setIndex(idx); gg.computeVertexNormals(); return gg;
+  };
+  const both=(id,geo,m)=>{ g.add(P(id,geo,m)); g.add(P(id,mirrorX(geo),m)); };
+  const mT=mat("musT",PAL.tendon,{rough:.40,env:.40,bump:.03,fib:3,edge:0});
+  const mO=mat("musO",PAL.muscleDeep,{rough:.58,env:.34,bump:.10,fib:26,edge:0});
+  const k=B.sc, isM=(sex==="m");
+  /* 기준 높이: 두덩뼈능선 · 배꼽(L3~L4) · 칼돌기 끝 */
+  const yPb=cr+0.6, yUm=cr+(isM?22:20), yXp=B.ribTop-13.8*k, hR=yXp-yPb;
+  /* 배곧은근 — 두덩뼈에서 칼돌기·5~7번째 갈비연골까지, 위로 갈수록 넓어지고 나눔힘줄 3개로 칸이 나뉜다 */
+  const laW=y=>(y>=yUm?lp(0.85,0.65,ss(yUm,yXp,y)):lp(0.16,0.85,Math.pow(cl((y-yPb)/(yUm-yPb),0,1),1.6)))*k;
+  const rW=y=>{const t=cl((y-yPb)/hR,0,1.2); return (2.6+5.2*ss(0,0.62,t)+0.6*ss(0.62,1.1,t))*k;};
+  const xR=y=>laW(y)+rW(y);
+  const topR=u=>yXp+1.3*k+4.4*k*Math.pow(u,1.25);
+  const gI=0.42*k, yIs=[yUm+0.2*k, lp(yUm,yXp,0.5)+0.4*k, yXp-1.2*k];
+  const lineI=(n,u)=>yIs[n]+0.35*k*Math.sin(u*PI*1.4+n*1.7)-0.4*k*u*(n===2?-1:1);
+  const TRp=[1.9,2.1,2.1,1.6], RB=-3.0;                    /* 칸별 두께(cm) · 뒷면 오프셋 */
+  const rT=(n,u,v)=>TRp[n]*dome(u,v,0.55,n===0?0.35:0.5,n===0?0.16:0.12)*(n===0?lp(0.55,1,ss(0,0.35,v)):1);
+  for(let n=0;n<4;n++){
+    const lo=u=>n===0?yPb:lineI(n-1,u)+gI, hi=u=>n===3?topR(u):lineI(n,u)-gI;
+    both("rectus",wrap(30,n===0?40:18,(u,v)=>{ const y=lp(lo(u),hi(u),v); return [y,angX(y,laW(y)+u*rW(y)),RB,RB+rT(n,u,v)]; }),mM);
   }
-  /* 배바깥빗근 */
-  const obl=torsoPatch(PR,ry0-3,ry0+14,PI*0.07,PI*0.43,-1.05,1.8,
-    t=>0.70+0.35*t,30,26);
-  g.add(P("oblique",obl,mM2)); g.add(P("oblique",mirrorX(obl),mM2));
+  for(let n=0;n<3;n++)
+    both("rectus",wrap(30,3,(u,v)=>{ const y=lineI(n,u)+lp(-gI-0.15*k,gI+0.15*k,v); return [y,angX(y,laW(y)+u*rW(y)),RB,RB+0.65+0.2*Math.sin(PI*v)]; }),mT);
+  /* 백색선 */
+  both("rectus",wrap(3,90,(u,v)=>{ const y=lp(yPb-0.4,yXp+0.6,v); return [y,angX(y,u*(laW(y)+0.08)),RB-0.05,RB+0.6]; }),mT);
+  /* 배세모근 */
+  const pyrH=0.32*(yUm-yPb);
+  both("rectus",wrap(14,16,(u,v)=>{ const y=yPb+0.2+v*pyrH, x=laW(y)+u*(2.2*k*Math.pow(1-v,0.9)+0.15*k);
+    const b=RB+rT(0,cl((x-laW(y))/rW(y),0,1),cl((y-yPb)/(yIs[0]-gI-yPb),0,1))*0.92; return [y,angX(y,x),b,b+0.55*dome(u,v,0.5,0.5,0.25)]; }),mM);
+  /* 배바깥빗근 — 5~12번째 갈비뼈(톱니 모양)에서 엉덩뼈능선·널힘줄로, 섬유는 위가쪽→아래안쪽 */
+  const yAS=py+3.4*k, xAS=(isM?11.2:12.0)*k, yCr=py+6.4*k, yR12=B.ribTop-32.5*k;
+  const xM=y=>{ if(y<=yAS) return xAS; if(y<=yUm) return lp(xAS,xR(yUm)+3.0*k,ss(yAS,yUm,y)); return lp(xR(yUm)+3.0*k,xR(y)+1.0*k,ss(yUm,yXp+3,y)); };
+  const aP=-0.05*PI;
+  const oTop=u=>{ const base=lp(yXp+4.6*k,yR12+1.2*k,Math.pow(u,0.85)), d=0.5-0.5*Math.cos(2*PI*8*u+PI); return base-1.6*k*Math.pow(1-d,1.6)*(1-0.4*u); };
+  const oBot=u=>yAS+(yCr-yAS)*ss(0,0.45,u)-0.8*k*ss(0.6,1,u);
+  both("oblique",wrap(120,64,(u,v)=>{ const yb=oBot(u), yt=Math.max(yb+1,oTop(u)), y=lp(yb,yt,v);
+    const a=lp(angX(y,xM(y)),aP,u), arc=(PI/2-a)*14;
+    return [y,a,RB+0.55,RB+0.55+1.45*dome(u,v,0.35,0.5,0.14)*lp(0.35,1,ss(0,0.12,u)),arc-y,arc+y]; },true),mO);
+  /* 배바깥빗근 널힘줄 · 샅고랑인대(위앞엉덩뼈가시 → 두덩결절) */
+  const xPT=laW(yPb)+2.1*k, yPT=yPb-0.6*k, ingX=y=>lp(xPT,xAS,cl((y-yPT)/(yAS-yPT),0,1));
+  both("oblique",wrap(26,80,(u,v)=>{ const y=lp(yPT+0.2,yXp+3*k,v), inner=xR(y)-0.4*k, outer=Math.max(inner+0.3,y<yAS?ingX(y):xM(y)+0.7*k);
+    const x=lp(inner,outer,u), a=angX(y,x), arc=(PI/2-a)*14; return [y,a,RB+0.5,RB+0.85,arc-y,arc+y]; },true),mT);
+  const ingP=[]; for(let n=0;n<=14;n++){ const y=lp(yPT,yAS,n/14); ingP.push(wpt(y,angX(y,ingX(y)),RB+0.85)); }
+  both("oblique",sweep(ingP,t=>0.30+0.12*Math.sin(PI*t),{tub:40,rad:10}),mT);
   /* 볼기근 — 큰볼기근·중간볼기근 */
   const glMax=torsoPatch(PR,cr+1,cr+13,PI*1.06,PI*1.50,-0.70,3.6,
     t=>0.62+0.48*Math.sin(Math.PI*t),28,28);
@@ -2338,6 +2392,224 @@ function registerStruct(name,cat,region){
   return id;
 }
 
+/* ABDOMEN-BEGIN */
+/* ---------- 실제 모델용 배 근육 ----------
+   실제 모델(GLB)에는 배벽 근육이 없어서, 불러온 뼈대(두덩뼈·엉덩뼈·갈비뼈·갈비연골·복장뼈)를 감싸는
+   배벽 곡면을 구한 뒤 그 위에 배곧은근(나눔힘줄 3개)·백색선·배세모근·배바깥빗근(근육+널힘줄)·샅고랑인대를 얹는다.
+   좌표는 GLB 단위(m), +z가 앞, x<0이 몸의 오른쪽. 왼쪽(x>0)을 만들고 좌우 대칭으로 복사한다. */
+Object.assign(KO,{"Rectus abdominis muscle":"복직근 (배곧은근)","Tendinous intersection of rectus abdominis":"복직근 건획 (배곧은근 나눔힘줄)",
+  "Linea alba":"백선 (백색선)","Pyramidalis muscle":"추체근 (배세모근)","External oblique muscle":"외복사근 (배바깥빗근)",
+  "Aponeurosis of external oblique":"외복사근 건막 (배바깥빗근 널힘줄)","Inguinal ligament":"서혜인대 (샅고랑인대)"});
+Object.assign(LINK,{"Rectus abdominis muscle":"rectus","External oblique muscle":"oblique"});
+const ABD_DESC={
+ "Tendinous intersection of rectus abdominis":"배곧은근을 가로지르는 3개의 힘줄띠. 배꼽 높이, 칼돌기 아래, 그 사이에 있으며 앞쪽 배곧은근집에 단단히 붙어 근육을 여러 칸(이른바 식스팩)으로 나눈다.",
+ "Linea alba":"칼돌기에서 두덩결합까지 배 한가운데를 세로로 지나는 힘줄 띠. 양쪽 배근육의 널힘줄이 만나 엮인 것으로, 배꼽 위에서 넓고 아래로 갈수록 좁아진다.",
+ "Pyramidalis muscle":"두덩뼈에서 일어나 백색선에 붙는 작은 세모꼴 근육. 배곧은근 아래끝 앞에 있으며 백색선을 팽팽하게 한다. 없는 사람도 있다.",
+ "Aponeurosis of external oblique":"배바깥빗근의 근육 부분이 앞쪽에서 넓은 막 모양 힘줄로 바뀐 것. 배곧은근 앞을 덮는 배곧은근집 앞층을 이루고 백색선에서 반대쪽과 만난다.",
+ "Inguinal ligament":"위앞엉덩뼈가시에서 두덩결절까지 이어진 띠. 배바깥빗근 널힘줄의 아래 모서리가 안쪽으로 말려 두꺼워진 것으로 배와 넓적다리의 경계가 된다."};
+const ABD_NOTE={"Rectus abdominis muscle":"실제 모델에 없는 배 근육을 불러온 뼈대에 맞춰 만든 형상입니다.",
+ "External oblique muscle":"실제 모델에 없는 배 근육을 불러온 뼈대에 맞춰 만든 형상입니다. 섬유는 위가쪽에서 아래안쪽으로(주머니에 손 넣는 방향) 달립니다."};
+function buildRealAbdomen(root,opt){
+  opt=opt||{};
+  const nm=o=>o.userData.anatomyName||"";
+  const ctx=root.children.filter(o=>o.isMesh&&o.userData.ctx);
+  const pick=re=>ctx.filter(o=>re.test(nm(o)));
+  const ptsOf=(list,cap)=>{ const out=[]; list.forEach(o=>{ const n=o.geometry.attributes.position.count;
+    elPoints(o,Math.max(1,Math.round(n/(cap||2500)))).forEach(p=>out.push(p)); }); return out; };
+  const avg=a=>{ const c=new T.Vector3(); a.forEach(p=>c.add(p)); return c.multiplyScalar(1/Math.max(1,a.length)); };
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), lerp=(a,b,t)=>a+(b-a)*t;
+  const sstep=(a,b,v)=>{ const t=clamp((v-a)/(b-a),0,1); return t*t*(3-2*t); };
+
+  /* 1) 기준점 */
+  const axis=[];
+  ["T8","T9","T10","T11","T12","L1","L2","L3","L4","L5"].forEach(k=>{
+    const p=ptsOf(pick(new RegExp("\\("+k+"\\)$")),1500); if(!p.length) return;
+    let z1=-Infinity; p.forEach(q=>{ z1=Math.max(z1,q.z); });
+    const c=avg(p.filter(q=>q.z>z1-0.03)); axis.push({k:k,y:c.y,z:c.z});
+  });
+  const hipb=pick(/^hip bone$/i), stern=pick(/^body of sternum$/i);
+  if(axis.length<6||!hipb.length||!stern.length) return null;
+  axis.sort((a,b)=>a.y-b.y);
+  const zcAt=y=>{ if(y<=axis[0].y) return axis[0].z;
+    for(let i=0;i<axis.length-1;i++){ const a=axis[i],b=axis[i+1]; if(y<=b.y) return lerp(a.z,b.z,(y-a.y)/((b.y-a.y)||1)); }
+    return axis[axis.length-1].z; };
+  const yV=k=>{ const a=axis.find(q=>q.k===k); return a?a.y:null; };
+  const hp=ptsOf(hipb,6000), hpL=hp.filter(p=>p.x>0);
+  let pz1=-Infinity; hp.forEach(p=>{ if(Math.abs(p.x)<0.03) pz1=Math.max(pz1,p.z); });
+  let yPub=-Infinity; hp.forEach(p=>{ if(Math.abs(p.x)<0.03&&p.z>pz1-0.03) yPub=Math.max(yPub,p.y); });   /* 두덩뼈능선 위끝 */
+  let AS=null; hpL.forEach(p=>{ if(p.x>0.05&&p.y>yPub+0.04&&(!AS||p.z>AS.z)) AS=p; });                     /* 위앞엉덩뼈가시 */
+  let sBot=Infinity; ptsOf(stern,3000).forEach(p=>{ sBot=Math.min(sBot,p.y); });
+  const yX=sBot-0.025;                                   /* 칼돌기 끝 (모델에 칼돌기가 없어 복장뼈몸통 아래로 연장) */
+  const yL3=yV("L3"), yL4=yV("L4");
+  const yU=(yL3!==null&&yL4!==null)?(yL3+yL4)/2:lerp(yPub,yX,0.42);  /* 배꼽: L3~L4 사이 */
+  let yR12=null; { const r12=ptsOf(pick(/^rib \(12th\)$/i),2000).filter(p=>p.x>0); r12.forEach(p=>{ if(yR12===null||p.y<yR12) yR12=p.y; }); }
+  if(yR12===null) yR12=lerp(yU,yX,0.35);
+  if(!AS||!(yX>yU&&yU>yPub)) return null;
+
+  /* 2) 배벽 곡면: 높이(행) × 정중선에서의 각도(열)로 뼈대 바깥 경계를 구하고, 빈 곳은 위아래를 이어 채운다 */
+  const Y0=yPub-0.045, Y1=sBot+0.075, NY=72, DY=(Y1-Y0)/(NY-1), NA=56, TH=2.15, DT=TH/(NA-1);
+  const env=new Float32Array(NY*NA).fill(-1);
+  const envBones=pick(/^(rib \(|costal cart|body of sternum|manubrium|hip bone)/i);
+  ptsOf(envBones,2500).forEach(p=>{
+    if(p.y<Y0-DY||p.y>Y1+DY) return;
+    const j=clamp(Math.round((p.y-Y0)/DY),0,NY-1), dz=p.z-zcAt(p.y), th=Math.atan2(Math.abs(p.x),dz);
+    if(th>TH+DT) return; const i=clamp(Math.round(th/DT),0,NA-1), r=Math.hypot(p.x,dz);
+    if(r>env[j*NA+i]) env[j*NA+i]=r;
+  });
+  const bone=Float32Array.from(env);
+  for(let i=0;i<NA;i++){
+    const F=[]; for(let j=0;j<NY;j++) if(env[j*NA+i]>0) F.push(j);
+    if(!F.length) continue;
+    const th=i*DT, front=Math.pow(Math.cos(Math.min(th,1.5)),2);
+    for(let j=0;j<F[0];j++) env[j*NA+i]=env[F[0]*NA+i];
+    for(let j=F[F.length-1]+1;j<NY;j++) env[j*NA+i]=env[F[F.length-1]*NA+i];
+    for(let k=0;k<F.length-1;k++){ const a=F[k],b=F[k+1]; if(b-a<2) continue;
+      const ra=env[a*NA+i], rb=env[b*NA+i], amp=0.016*front*Math.min(1,(b-a)*DY/0.2);
+      for(let j=a+1;j<b;j++){ const t=(j-a)/(b-a); env[j*NA+i]=lerp(ra,rb,t)+amp*Math.sin(Math.PI*t); } }
+  }
+  for(let i=0;i<NA;i++) if(env[i]<0){   /* 뼈가 하나도 없는 열은 가까운 열로 */
+    let k=1; while(k<NA&&!((i-k>=0&&env[i-k]>0)||(i+k<NA&&env[i+k]>0))) k++;
+    const src=(i-k>=0&&env[i-k]>0)?i-k:i+k; if(src<0||src>=NA) continue;
+    for(let j=0;j<NY;j++) env[j*NA+i]=env[j*NA+src];
+  }
+  const smooth=n=>{ for(let it=0;it<n;it++){ const o=Float32Array.from(env);
+    for(let j=0;j<NY;j++) for(let i=0;i<NA;i++){ let s=0,w=0;
+      for(let dj=-1;dj<=1;dj++) for(let di=-1;di<=1;di++){ const jj=clamp(j+dj,0,NY-1); let ii=i+di; if(ii<0) ii=-ii; if(ii>=NA) ii=NA-1;
+        const ww=(dj?1:2)*(di?1:2); s+=o[jj*NA+ii]*ww; w+=ww; }
+      env[j*NA+i]=s/w; } } };
+  const enforce=m=>{ for(let k=0;k<env.length;k++) if(bone[k]>0&&env[k]<bone[k]+m) env[k]=bone[k]+m; };
+  smooth(10); enforce(0.002); smooth(4); enforce(0.0); smooth(2);
+  const envAt=(jf,th)=>{ jf=clamp(jf,0,NY-1.0001); const ti=clamp(th/DT,0,NA-1.0001);
+    const j=Math.floor(jf), i=Math.floor(ti), fj=jf-j, fi=ti-i, g=(a,b)=>env[a*NA+b];
+    return lerp(lerp(g(j,i),g(j,i+1),fi),lerp(g(j+1,i),g(j+1,i+1),fi),fj); };
+  const arc=new Float32Array(NY*NA);
+  for(let j=0;j<NY;j++){ arc[j*NA]=0; for(let i=1;i<NA;i++){ const r0=env[j*NA+i-1], r1=env[j*NA+i];
+    arc[j*NA+i]=arc[j*NA+i-1]+Math.hypot(0.5*(r0+r1)*DT,r1-r0); } }
+  const rowTh=(j,s)=>{ const b=j*NA; if(s<=0) return 0;
+    for(let i=1;i<NA;i++) if(arc[b+i]>=s) return (i-1+(s-arc[b+i-1])/((arc[b+i]-arc[b+i-1])||1e-6))*DT;
+    return TH+(s-arc[b+NA-1])/(env[b+NA-1]||0.1); };
+  const thAt=(y,s)=>{ const jf=clamp((y-Y0)/DY,0,NY-1.0001), j=Math.floor(jf); return lerp(rowTh(j,s),rowTh(j+1,s),jf-j); };
+  const sAt=(y,th)=>{ const jf=clamp((y-Y0)/DY,0,NY-1.0001), j=Math.floor(jf), ti=clamp(th/DT,0,NA-1.0001), i=Math.floor(ti), f=ti-i;
+    const g=jj=>lerp(arc[jj*NA+i],arc[jj*NA+i+1],f); return lerp(g(j),g(j+1),jf-j); };
+  const P=(y,s,off)=>{ const th=thAt(y,s), r=envAt((y-Y0)/DY,th)+off; return [Math.sin(th)*r,y,zcAt(y)+Math.cos(th)*r]; };
+  const thOf=p=>Math.atan2(Math.abs(p.x),p.z-zcAt(p.y));
+
+  /* 3) 판 모양 형상: fn(u,v) → [y, s, 안쪽 두께, 바깥 두께, uv.x, uv.y] */
+  const slab=(nu,nv,fn,normUV)=>{
+    const C=nu+1, R=nv+1, N=C*R, pos=new Float32Array(N*6), uv=new Float32Array(N*4), idx=[];
+    const raw=[];
+    for(let j=0;j<R;j++) for(let i=0;i<C;i++){ const q=fn(i/nu,j/nv), k=j*C+i;
+      const a=P(q[0],q[1],q[3]), b=P(q[0],q[1],q[2]);
+      pos.set(a,k*3); pos.set(b,(N+k)*3); raw.push(q.length>4?[q[4],q[5]]:[i/nu,j/nv]); }
+    let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;
+    if(normUV) raw.forEach(r=>{ x0=Math.min(x0,r[0]); x1=Math.max(x1,r[0]); y0=Math.min(y0,r[1]); y1=Math.max(y1,r[1]); });
+    raw.forEach((r,k)=>{ const u=normUV?(r[0]-x0)/((x1-x0)||1):r[0], v=normUV?(r[1]-y0)/((y1-y0)||1):r[1];
+      uv[k*2]=u; uv[k*2+1]=v; uv[(N+k)*2]=u; uv[(N+k)*2+1]=v; });
+    const at=(L,j,i)=>L*N+j*C+i;
+    for(let j=0;j<nv;j++) for(let i=0;i<nu;i++){
+      idx.push(at(0,j,i),at(0,j,i+1),at(0,j+1,i), at(0,j,i+1),at(0,j+1,i+1),at(0,j+1,i));
+      idx.push(at(1,j,i),at(1,j+1,i),at(1,j,i+1), at(1,j,i+1),at(1,j+1,i),at(1,j+1,i+1)); }
+    for(let i=0;i<nu;i++){ [0,nv].forEach(j=>{ const a=at(0,j,i),b=at(0,j,i+1),c=at(1,j,i),d=at(1,j,i+1);
+      if(j===0) idx.push(a,c,b,b,c,d); else idx.push(a,b,c,b,d,c); }); }
+    for(let j=0;j<nv;j++){ [0,nu].forEach(i=>{ const a=at(0,j,i),b=at(0,j+1,i),c=at(1,j,i),d=at(1,j+1,i);
+      if(i===0) idx.push(a,b,c,b,d,c); else idx.push(a,c,b,b,c,d); }); }
+    const g=new T.BufferGeometry();
+    g.setAttribute("position",new T.BufferAttribute(pos,3)); g.setAttribute("uv",new T.BufferAttribute(uv,2));
+    g.setIndex(idx); g.computeVertexNormals(); return g;
+  };
+  const dome=(u,v,pu,pv,floor)=>{ const d=Math.pow(Math.sin(Math.PI*clamp(u,0,1)),pu)*Math.pow(Math.sin(Math.PI*clamp(v,0,1)),pv); return (floor||0.12)+(1-(floor||0.12))*d; };
+
+  /* 4) 배곧은근 — 두덩뼈능선에서 칼돌기·5~7번째 갈비연골까지, 위로 갈수록 넓어진다 */
+  const hTot=yX-yPub;
+  const la=y=>y>=yU?lerp(0.0085,0.0065,sstep(yU,yX,y)):lerp(0.0016,0.0085,Math.pow(clamp((y-yPub)/(yU-yPub),0,1),1.6));   /* 백색선 반폭 */
+  const wid=y=>{ const t=clamp((y-yPub)/hTot,0,1.2); return 0.026+0.052*sstep(0,0.62,t)+0.006*sstep(0.62,1.1,t); };         /* 한쪽 근육 너비 */
+  const sR=y=>la(y)+wid(y);                               /* 반달선(배곧은근 가쪽 모서리) */
+  const topR=u=>yX+0.013+0.044*Math.pow(u,1.25);          /* 위끝: 안쪽은 칼돌기, 가쪽은 5번째 갈비연골 */
+  const gI=0.0042;
+  const yI=[yU+0.002, lerp(yU,yX,0.5)+0.004, yX-0.012];   /* 나눔힘줄: 배꼽 높이·중간·칼돌기 아래 */
+  const lineI=(k,u)=>yI[k]+0.0035*Math.sin(u*Math.PI*1.4+k*1.7)-0.004*u*(k===2?-1:1);
+  const TR=[0.0105,0.0118,0.0118,0.0090], R0=0.0022;      /* 칸별 두께 (아래 칸 → 위 칸) */
+  const rectSeg=k=>{
+    const lo=u=>k===0?yPub:lineI(k-1,u)+gI, hi=u=>k===3?topR(u):lineI(k,u)-gI;
+    return slab(30,k===0?40:18,(u,v)=>{ const y=lerp(lo(u),hi(u),v), s=la(y)+u*wid(y)+(u<0.02?0.0004:0);
+      const th=TR[k]*dome(u,v,0.55,k===0?0.35:0.5,k===0?0.16:0.12)*(k===0?lerp(0.55,1,sstep(0,0.35,v)):1);
+      return [y,s,R0,R0+th]; });
+  };
+  const rectT=(y,s)=>{ const u=clamp((s-la(y))/wid(y),0,1), v=clamp((y-yPub)/((yI[0]-gI)-yPub),0,1);
+    return TR[0]*dome(u,v,0.55,0.35,0.16)*lerp(0.55,1,sstep(0,0.35,v)); };
+  const inters=k=>slab(30,3,(u,v)=>{ const y=lineI(k,u)+lerp(-gI-0.0015,gI+0.0015,v), s=la(y)+u*wid(y);
+    return [y,s,R0,R0+0.0036+0.0012*Math.sin(Math.PI*v)]; });
+  const linea=slab(3,90,(u,v)=>{ const y=lerp(yPub-0.004,yX+0.006,v), s=u*(la(y)+0.0008); return [y,s,R0-0.0005,R0+0.0034]; });
+  /* 배세모근: 두덩뼈에서 배꼽까지의 1/3쯤, 백색선 옆 세모꼴 */
+  const pyrH=0.32*(yU-yPub);
+  const pyram=slab(14,16,(u,v)=>{ const y=yPub+0.002+v*pyrH, w=0.022*Math.pow(1-v,0.9)+0.0015, s=la(y)+u*w;
+    const b=R0+rectT(y,s)*0.92; return [y,s,b,b+0.0034*dome(u,v,0.5,0.5,0.25)]; });
+
+  /* 5) 배바깥빗근 — 5~12번째 갈비뼈 바깥면(톱니 모양 기시) → 엉덩뼈능선 앞쪽 절반 + 널힘줄 */
+  const thAS=thOf(AS), yA=AS.y, sAS=sAt(yA,thAS);
+  const crest=new Float32Array(NA).fill(NaN);
+  hpL.forEach(p=>{ if(p.y<yPub+0.03) return; const i=clamp(Math.round(thOf(p)/DT),0,NA-1); if(isNaN(crest[i])||p.y>crest[i]) crest[i]=p.y; });
+  for(let i=0;i<NA;i++){ if(i*DT<thAS) crest[i]=yA; else if(isNaN(crest[i])) crest[i]=i?crest[i-1]:yA; }
+  for(let it=0;it<3;it++) for(let i=1;i<NA-1;i++) crest[i]=(crest[i-1]+2*crest[i]+crest[i+1])/4;
+  const crestAt=th=>{ const t=clamp(th/DT,0,NA-1.0001), i=Math.floor(t); return lerp(crest[i],crest[i+1],t-i); };
+  const thP=1.85;                                          /* 뒤 모서리(넓은등근 앞모서리 쪽) */
+  const sM=y=>{ if(y<=yA) return sAS;                       /* 근육 부분의 앞 모서리 */
+    if(y<=yU) return lerp(sAS,sR(yU)+0.032,sstep(yA,yU,y));
+    return lerp(sR(yU)+0.032,sR(y)+0.010,sstep(yU,yX+0.03,y)); };
+  const yMidO=lerp(yA,yX,0.5);
+  const oblTop=u=>{ const base=lerp(yX+0.048,yR12+0.012,Math.pow(u,0.85));
+    const d=0.5-0.5*Math.cos(2*Math.PI*8*u+Math.PI);          /* 8개 톱니(5~12번째 갈비뼈) */
+    return base-0.016*Math.pow(1-d,1.6)*(1-0.4*u); };
+  const oblBot=u=>{ const s=lerp(sAS,sAt(yA,thP),u); return crestAt(thAt(yA,s))+0.003; };
+  const obl=slab(120,64,(u,v)=>{
+    const yb=oblBot(u), yt=Math.max(yb+0.01,oblTop(u)), y=lerp(yb,yt,v);
+    const s0=sM(y), s1=sAt(y,thP), s=lerp(s0,s1,u);
+    const th=0.0068*dome(u,v,0.35,0.5,0.14)*lerp(0.35,1,sstep(0,0.12,u));
+    return [y,s,0.0024,0.0024+th,s-y,s+y]; },true);
+  const sPT=la(yPub)+0.021, yPT=yPub-0.006;                 /* 두덩결절 */
+  const ingS=y=>lerp(sPT,sAS,clamp((y-yPT)/(yA-yPT),0,1));
+  const aponTop=yX+0.03;
+  const apon=slab(26,80,(u,v)=>{
+    const y=lerp(yPT+0.002,aponTop,v), inner=sR(y)-0.004;
+    const outer=Math.max(inner+0.003,y<yA?ingS(y):sM(y)+0.007), s=lerp(inner,outer,u);
+    const b=0.0024+(u<0.2?rectT(y,sR(y))*0.6:0);
+    return [y,s,b,b+0.0017,s-y,s+y]; },true);
+  const ingPts=[]; for(let k=0;k<=14;k++){ const y=lerp(yPT,yA,k/14), q=P(y,ingS(y),0.0035); ingPts.push(V(q[0],q[1],q[2])); }
+  const ing=sweep(ingPts,t=>0.0024+0.0012*Math.sin(Math.PI*t),{tub:40,rad:10});
+
+  /* 6) 메시로 등록 */
+  const mkMat=(color,o)=>{ const m=fxMat("muscleB",color,Object.assign({rough:.52,env:.28},o||{})); m.userData.base=m.color.clone(); return m; };
+  const mus=CAT_TONE.muscle, ten=CAT_TONE.tendon, mats={};
+  const parts=[
+    {name:"Rectus abdominis muscle",cat:"muscle",geos:[0,1,2,3].map(rectSeg),mat:()=>mkMat(mus,{fib:9,bump:.09,edge:1})},
+    {name:"Tendinous intersection of rectus abdominis",cat:"muscle",geos:[0,1,2].map(inters),mat:()=>mkMat(ten,{fib:3,bump:.03,edge:0,rough:.4})},
+    {name:"Linea alba",cat:"muscle",geos:[linea],mat:()=>mkMat(ten,{fib:2,bump:.02,edge:0,rough:.4})},
+    {name:"Pyramidalis muscle",cat:"muscle",geos:[pyram],mat:()=>mkMat(mus,{fib:5,bump:.07,edge:1})},
+    {name:"External oblique muscle",cat:"muscle",geos:[obl],mat:()=>mkMat(mus,{fib:30,bump:.10,edge:0})},
+    {name:"Aponeurosis of external oblique",cat:"muscle",geos:[apon],mat:()=>mkMat(ten,{fib:60,bump:.035,edge:0,rough:.36})},
+    {name:"Inguinal ligament",cat:"lig",geos:[ing],mat:()=>mkMat(ten,{fib:4,bump:.03,edge:0,rough:.4})}
+  ];
+  const ids=[];
+  parts.forEach(pt=>{
+    const sid=registerStruct(pt.name,pt.cat,"배");
+    if(ABD_DESC[pt.name]) S[sid].d=ABD_DESC[pt.name];
+    S[sid].note=ABD_NOTE[pt.name]||"실제 모델에 없는 배벽 구조를 불러온 뼈대에 맞춰 만든 형상입니다.";
+    const m0=mats[sid]||(mats[sid]=pt.mat());
+    pt.geos.forEach(g=>{
+      [false,true].forEach(mir=>{
+        if(mir&&opt.leftOnly) return;
+        const m=new T.Mesh(mir?mirrorX(g):g,m0);
+        m.matrixAutoUpdate=false; m.updateMatrix();
+        Object.assign(m.userData,{id:sid,anatomyName:pt.name,anatomyGroup:"Abdomen - muscles",anatomyFile:"abdomen",isRight:mir,mirrored:mir});
+        m.castShadow=true; m.receiveShadow=false; root.add(m);
+      });
+    });
+    ids.push(sid);
+  });
+  return ids;
+}
+/* ABDOMEN-END */
+
 /* ---------- 보기(뷰) 정의 ---------- */
 const SKEL_CTX={f:"overview-skeleton",side:"both",ctx:true};
 const REAL_VIEWS={
@@ -2345,7 +2617,7 @@ const REAL_VIEWS={
    note:"실제 해부 모델: 몸의 오른쪽은 뼈대, 왼쪽은 근육을 겹쳐 보여줍니다."},
  skeletal:{parts:[{f:"overview-skeleton",side:"both"}]},
  muscular:{parts:[SKEL_CTX,{f:"upper-limb",cat:/muscle/i,side:"both"},{f:"lower-limb",cat:/muscle/i,side:"both"}],
-   note:"실제 모델에는 팔·어깨·등 위쪽·골반·다리 근육이 들어 있습니다. 배와 머리 근육은 포함되어 있지 않습니다."},
+   note:"실제 모델에는 팔·어깨·등 위쪽·골반·다리 근육이 들어 있습니다. 배 근육(복직근·외복사근 등)은 모델에 없어 실제 뼈대에 맞춰 만든 형상으로 더했고, 머리 근육은 포함되어 있지 않습니다."},
  nervous:{parts:[SKEL_CTX,{f:"upper-limb",cat:/nerve/i,side:"both"},{f:"lower-limb",cat:/nerve/i,side:"both"}],
    note:"실제 모델에는 팔신경얼기·허리엉치신경얼기와 팔다리 신경, 척수 아래쪽이 들어 있습니다. 뇌는 포함되어 있지 않습니다."},
  circulatory:{parts:[SKEL_CTX,{f:"upper-limb",cat:/arter|vein/i,side:"both"},{f:"lower-limb",cat:/arter|vein/i,side:"both"}],
@@ -2426,6 +2698,11 @@ function buildRealView(id){
         });
       });
     });
+    /* 배 근육: 실제 모델에 없어 뼈대에 맞춰 만든 형상을 더한다 (전체보기는 근육 쪽인 왼쪽만) */
+    if(id==="muscular"||id==="overview"){
+      try{ const ab=buildRealAbdomen(root,{leftOnly:id==="overview"}); if(ab) ab.forEach(s=>ids.add(s)); else console.warn("[배 근육] 뼈대 기준점을 찾지 못했습니다"); }
+      catch(e){ console.error("[배 근육]",e); }
+    }
     const order={bone:0,cart:1,muscle:2,nerve:3,artery:4,vein:5,lig:6,other:7};
     realList[id]=[...ids].sort((a,b)=>{
       const A=S[a],B=S[b]; const d=(order[A.cat]-order[B.cat]); if(d) return d;
@@ -4339,7 +4616,7 @@ const EX_MUS=[
  {key:"gastro",ko:"비복근 (장딴지근)",en:"Gastrocnemius",re:/^(lateral|medial) head of gastrocnemius$/i,o:"fem",i:"foot"},
  {key:"soleus",ko:"가자미근",en:"Soleus",re:/^soleus muscle$/i,o:"shank",i:"foot"},
  {key:"tibA",ko:"전경골근 (앞정강근)",en:"Tibialis anterior",re:/^tibialis anterior muscle$/i,o:"shank",i:"foot"},
- {key:"rectAb",ko:"복직근 (배곧은근, 모식)",en:"Rectus abdominis",proc:"rect",o:"pelvis",i:"thorax"},
+ {key:"rectAb",ko:"복직근 (배곧은근)",en:"Rectus abdominis",re:/^rectus abdominis muscle$/i,proc:"rect",o:"pelvis",i:"thorax"},
  {key:"iliocost",ko:"장늑근 (엉덩갈비근, 모식)",en:"Erector spinae · iliocostalis",proc:"erector",o:"pelvis",i:"thorax"},
  {key:"longis",ko:"최장근 (가장긴근, 모식)",en:"Erector spinae · longissimus",proc:"erector",o:"pelvis",i:"thorax"},
  {key:"spinalis",ko:"극근 (가시근, 모식)",en:"Erector spinae · spinalis",proc:"erector",o:"lumbar",i:"thorax"}
@@ -4525,6 +4802,7 @@ function exSetup(){
   const si=s=>EX_SEG.indexOf(s);
   const allowOf=o=>{
     const side=cen.get(o).x<0?"R":"L", g=(o.userData.anatomyGroup||"").toLowerCase();
+    if(o.userData.anatomyFile==="abdomen") return [[0,0],[1,1],[2,2]];
     if(o.userData.anatomyFile==="lower-limb") return [[0,0],[1,1],[si("fem"+side)],[si("shank"+side)],[si("foot"+side)]].map(a=>[a[0],a[1]===undefined?a[0]:a[1]]);
     if(/^pectoral girdle/.test(g)) return [[0,0],[1,1],[2,2],[3,3],[si("scap"+side),si("scap"+side)],[EX_SEG.length+(side==="R"?0:1),si("hum"+side)]];
     if(/^arm/.test(g)) return [[si("scap"+side)],[si("hum"+side)],[si("fore"+side)]].map(a=>[a[0],a[0]]);
@@ -4621,6 +4899,7 @@ function exSetup(){
 , R:u=>0.009*Math.pow(Math.sin(Math.PI*u),0.5), ex:1.1, ez:1}
   ];
   procDef.forEach(pd=>{
+    if(groups[pd.key]&&groups[pd.key].meshes.length) return;   /* 실제 형상(배 근육)이 있으면 모식 튜브는 만들지 않는다 */
     const id="p:ex-"+pd.key; S[id]={ko:pd.ko,en:EX_MUS.find(g=>g.key===pd.key).en,d:pd.d,loc:pd.loc,cat:"muscle",real:false};
     [-1,1].forEach(s=>{ const geo=exTube(pd.path(s),pd.R,pd.ex,pd.ez);
       const mat=new T.MeshStandardMaterial({color:EX_RELAX.clone(),roughness:.52,metalness:0,envMapIntensity:.28,side:T.DoubleSide});

@@ -1240,5 +1240,20 @@ window.ATLAS_EN={
 "그 밖의 요소": "Other elements",
 "호흡·소화·비뇨·생식계통의 모식 모형, 동작모드, 화면 구성과 코드는 개발자 I.H KIM이 만들었습니다. 사용한 소프트웨어:": "The schematic models of the respiratory, digestive, urinary and reproductive systems, Motion mode, and the screen layout and code were created by developer I.H KIM. Software used:",
 "(MIT 라이선스),": "(MIT License),",
-"디코더 (Apache License 2.0).": "decoder (Apache License 2.0)."
+"디코더 (Apache License 2.0).": "decoder (Apache License 2.0).",
+"실제 모델에는 팔·어깨·등 위쪽·골반·다리 근육이 들어 있습니다. 배 근육(복직근·외복사근 등)은 모델에 없어 실제 뼈대에 맞춰 만든 형상으로 더했고, 머리 근육은 포함되어 있지 않습니다.": "The real model includes muscles of the arm, shoulder, upper back, pelvis, and leg. Abdominal muscles (rectus abdominis, external oblique, etc.) are not in the model, so shapes fitted to the real skeleton were added. Head muscles are not included.",
+"복직근 건획 (배곧은근 나눔힘줄)": "Tendinous intersections of rectus abdominis",
+"백선 (백색선)": "Linea alba",
+"추체근 (배세모근)": "Pyramidalis",
+"외복사근 건막 (배바깥빗근 널힘줄)": "Aponeurosis of external oblique",
+"서혜인대 (샅고랑인대)": "Inguinal ligament",
+"배": "Abdomen",
+"배곧은근을 가로지르는 3개의 힘줄띠. 배꼽 높이, 칼돌기 아래, 그 사이에 있으며 앞쪽 배곧은근집에 단단히 붙어 근육을 여러 칸(이른바 식스팩)으로 나눈다.": "Three tendinous bands crossing the rectus abdominis — at the umbilicus, below the xiphoid, and between them. Firmly attached to the anterior rectus sheath, they divide the muscle into segments (the so-called six-pack).",
+"칼돌기에서 두덩결합까지 배 한가운데를 세로로 지나는 힘줄 띠. 양쪽 배근육의 널힘줄이 만나 엮인 것으로, 배꼽 위에서 넓고 아래로 갈수록 좁아진다.": "A tendinous band running down the midline from the xiphoid process to the pubic symphysis, formed where the aponeuroses of both sides interlace. It is wide above the umbilicus and narrows below.",
+"두덩뼈에서 일어나 백색선에 붙는 작은 세모꼴 근육. 배곧은근 아래끝 앞에 있으며 백색선을 팽팽하게 한다. 없는 사람도 있다.": "A small triangular muscle arising from the pubis and inserting into the linea alba, in front of the lower end of rectus abdominis. It tenses the linea alba and is absent in some people.",
+"배바깥빗근의 근육 부분이 앞쪽에서 넓은 막 모양 힘줄로 바뀐 것. 배곧은근 앞을 덮는 배곧은근집 앞층을 이루고 백색선에서 반대쪽과 만난다.": "The broad sheet-like tendon into which the external oblique turns anteriorly. It forms the anterior layer of the rectus sheath and meets the opposite side at the linea alba.",
+"위앞엉덩뼈가시에서 두덩결절까지 이어진 띠. 배바깥빗근 널힘줄의 아래 모서리가 안쪽으로 말려 두꺼워진 것으로 배와 넓적다리의 경계가 된다.": "A band from the anterior superior iliac spine to the pubic tubercle, formed by the thickened, in-rolled lower edge of the external oblique aponeurosis. It marks the boundary between abdomen and thigh.",
+"실제 모델에 없는 배 근육을 불러온 뼈대에 맞춰 만든 형상입니다.": "An abdominal muscle missing from the real model, shaped to fit the loaded skeleton.",
+"실제 모델에 없는 배 근육을 불러온 뼈대에 맞춰 만든 형상입니다. 섬유는 위가쪽에서 아래안쪽으로(주머니에 손 넣는 방향) 달립니다.": "An abdominal muscle missing from the real model, shaped to fit the loaded skeleton. Its fibers run from upper-lateral to lower-medial (the 'hands in pockets' direction).",
+"실제 모델에 없는 배벽 구조를 불러온 뼈대에 맞춰 만든 형상입니다.": "An abdominal-wall structure missing from the real model, shaped to fit the loaded skeleton."
 };
