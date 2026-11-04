@@ -3674,14 +3674,14 @@ function elUpdatePanel(){
    · 신장성(늘어나며 힘): 힘은 들어가지만 고무줄처럼 늘어나 두께가 서서히 얇아진다
    · 이완: 힘이 빠져 원래보다 약간 가늘어진다 */
 const CM_KO={conc:"단축성",iso:"등척성",ecc:"신장성",relax:"이완"};
-function contractGirth(m,s,thr){
+function contractGirth(m,s,thr,force){
   const len=m.len||1, v=m.gPrevLen==null?0:(len-m.gPrevLen)/Math.max(s,1e-3); m.gPrevLen=len;
   m.gVel=(m.gVel||0)+(v-(m.gVel||0))*(1-Math.exp(-s*8));
   const a=m.act||0, vol=Math.min(1.14,Math.max(.88,1/Math.sqrt(len)));
   let tgt,rate,mode;
   if(a<=(thr===undefined?.4:thr)){ mode="relax"; tgt=vol*(.86+.3*a); rate=4; }
-  else if(m.gVel<-.006){ mode="conc"; tgt=vol*(.86+.68*a); rate=6; }
-  else if(m.gVel>.006){ mode="ecc"; tgt=Math.pow(1/len,.9)*(.9+.2*a); rate=1.5; }
+  else if(force==="conc"||(!force&&m.gVel<-.006)){ mode="conc"; tgt=vol*(.86+.68*a); rate=6; }
+  else if(force==="ecc"||(!force&&m.gVel>.006)){ mode="ecc"; tgt=Math.pow(1/len,.9)*(.9+.2*a); rate=1.5; }
   else { mode="iso"; tgt=vol*(.88+.62*a); rate=3; }
   m.cmode=mode; tgt=Math.min(1.5,Math.max(.8,tgt));
   const g0=m.girth||1; m.girth=g0+(tgt-g0)*(1-Math.exp(-s*rate));
@@ -5667,7 +5667,10 @@ function exTick(dt){
   Object.values(E.groups).forEach(g=>{ if(!g.meshes.length) return; const before=g.act; g.act+=((tgt[g.def.key]||0.04)-g.act)*k; if(Math.abs(g.act-before)>.002) changed=true; });
   if(changed){ exApply(); E.drawn=E.p; }
   Object.values(E.groups).forEach(g=>{ if(!g.meshes.length) return;
-    contractGirth(g,s);
+    /* 운동 동작: 수축 종류는 운동 정의의 역할·동작 방향으로 정한다(모델 형상에서 잰 길이는 두 관절 근육에서 부정확할 수 있음) */
+    const role=["ag","syn","stab","ant"].find(r=>(d.m[r]||[]).indexOf(g.def.key)>=0);
+    const force=(d.iso||role==="stab")?"iso":role==="ant"||!role?undefined:conc?"conc":ecc?"ecc":"iso";
+    contractGirth(g,s,.4,force);
     const gR=Math.min(1.14,Math.max(.88,1/Math.sqrt(g.len||1)))*.86;   /* 힘이 빠진(이완) 굵기 */
     g.meshes.forEach(m=>{ const sideK=(d.side&&d.side[m.userData.side]!==undefined)?d.side[m.userData.side]:1, a=g.act*sideK;
       m.userData.mat0.color.copy(EX_RELAX).lerp(EX_CONTRACT,Math.min(1,a*1.1)); if(m.userData.dim) m.userData.dim.color.copy(m.userData.mat0.color);
