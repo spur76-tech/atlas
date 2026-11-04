@@ -827,7 +827,7 @@ ol.parts .seen{flex:0 0 auto;font-size:11px;font-weight:700;color:#34D399;margin
           <thead><tr><th>근육</th><th>상태</th><th>활성</th><th>굵기*</th><th>길이*</th></tr></thead>
           <tbody id="elRows"></tbody>
         </table>
-        <p class="el-note">* 굵기는 원래 모델 대비 근육 배(가운데 부분)의 두께, 길이는 중간 각도를 100%로 둔 근육-힘줄 길이로, 모두 모식 추정값입니다. 길이 숫자는 현재 자세에서의 길이이고, ▼는 지금 짧아지는 중, ▲는 길어지는 중임을 뜻합니다. 예를 들어 깊이 굽힌 자세에서 펴기 시작하면 상완삼두근 (위팔세갈래근)은 아직 100%보다 길지만(▼) 수축하며 짧아지고 있습니다. 굵기·색 변화는 관절 각도와 움직임 방향에 맞춘 시각화이며 실측 생체역학 값이 아닙니다. 근육 이름을 누르면 아래쪽에 설명이 나타납니다.</p>
+        <p class="el-note">* 굵기는 원래 모델 대비 근육 배(가운데 부분)의 두께, 길이는 중간 각도를 100%로 둔 근육-힘줄 길이로, 모두 모식 추정값입니다. 굵기는 수축 종류에 따라 다르게 변합니다. 단축성 수축은 짧아지는 만큼 근육 배가 볼록하게 두꺼워지고, 등척성 수축은 두꺼워진 상태가 유지되며, 신장성 수축은 힘을 내면서도 늘어나므로 두께가 서서히 얇아집니다. 길이 숫자는 현재 자세에서의 길이이고, ▼는 지금 짧아지는 중, ▲는 길어지는 중임을 뜻합니다. 예를 들어 깊이 굽힌 자세에서 펴기 시작하면 상완삼두근 (위팔세갈래근)은 아직 100%보다 길지만(▼) 수축하며 짧아지고 있습니다. 굵기·색 변화는 관절 각도와 움직임 방향에 맞춘 시각화이며 실측 생체역학 값이 아닙니다. 근육 이름을 누르면 아래쪽에 설명이 나타납니다.</p>
       </div>
     </section>
     <section class="card simcard" id="squatcard" hidden aria-live="polite">
@@ -851,7 +851,7 @@ ol.parts .seen{flex:0 0 auto;font-size:11px;font-weight:700;color:#34D399;margin
           <thead><tr><th>근육</th><th>상태</th><th>활성</th><th>굵기*</th><th>길이*</th></tr></thead>
           <tbody id="sqRows"></tbody>
         </table>
-        <p class="el-note">* 굵기는 원래 모델 대비 근육 배의 두께, 길이는 선 자세를 100%로 둔 근육-힘줄 길이로, 모두 관절 각도에서 계산한 모식 추정값입니다. 상태의 ‘단축성’은 짧아지며 힘을 내는 수축, ‘신장성’은 길어지면서 힘을 내는 수축, ‘등척성’은 길이 변화 없이 힘을 내는 수축입니다. 근육 이름을 누르면 아래쪽에 설명이 나타납니다.</p>
+        <p class="el-note">* 굵기는 원래 모델 대비 근육 배의 두께, 길이는 선 자세를 100%로 둔 근육-힘줄 길이로, 모두 관절 각도에서 계산한 모식 추정값입니다. 상태의 ‘단축성’은 짧아지며 힘을 내는 수축, ‘신장성’은 길어지면서 힘을 내는 수축, ‘등척성’은 길이 변화 없이 힘을 내는 수축입니다. 굵기는 수축 종류에 따라 다르게 변합니다. 단축성 수축은 짧아지는 만큼 근육 배가 볼록하게 두꺼워지고, 등척성 수축은 두꺼워진 상태가 유지되며, 신장성 수축은 힘을 내면서도 늘어나므로 두께가 서서히 얇아집니다. 근육 이름을 누르면 아래쪽에 설명이 나타납니다.</p>
       </div>
     </section>
     <section class="card simcard" id="bendcard" hidden aria-live="polite">
@@ -3638,7 +3638,7 @@ function elUpdatePanel(){
   realElbow.muscles.forEach(m=>{
     if(!m.ui) return;
     const on=m.act>0.45, hex="#"+m.mat.color.clone().convertLinearToSRGB().getHexString();
-    m.ui.st.textContent=on?"수축":"이완"; m.ui.st.className="el-state "+(on?"c":"r");
+    m.ui.st.textContent=on?CM_KO[m.cmode||"iso"]:"이완"; m.ui.st.className="el-state "+(on?"c":"r");
     m.ui.bar.style.width=Math.round(m.act*100)+"%"; m.ui.bar.style.background=hex; m.ui.sw.style.background=hex;
     m.ui.gir.textContent=Math.round(m.girth*100)+"%";
     /* 길이 칸에 변화 방향(▼ 짧아지는 중 / ▲ 길어지는 중)을 함께 표시 */
@@ -3647,6 +3647,26 @@ function elUpdatePanel(){
     m.ui.len.textContent=Math.round(m.len*100)+"%"+m.trend;
     m.ui.len.title=m.trend===" ▼"?"짧아지는 중":m.trend===" ▲"?"길어지는 중":"";
   });
+}
+/* ===== 수축 종류에 따른 근육 배 굵기 (모든 동작 시뮬레이터 공통) =====
+   근육 자신의 길이 변화 속도로 수축 종류를 가른다.
+   · 단축성(짧아지며 힘): 부피가 일정하므로 양끝이 모이며 근육 배가 빠르게 볼록해진다
+   · 등척성(길이 그대로 힘): 근섬유가 밀착해 단단해진 채 두꺼운 상태가 유지된다
+   · 신장성(늘어나며 힘): 힘은 들어가지만 고무줄처럼 늘어나 두께가 서서히 얇아진다
+   · 이완: 힘이 빠져 원래보다 약간 가늘어진다 */
+const CM_KO={conc:"단축성",iso:"등척성",ecc:"신장성",relax:"이완"};
+function contractGirth(m,s,thr){
+  const len=m.len||1, v=m.gPrevLen==null?0:(len-m.gPrevLen)/Math.max(s,1e-3); m.gPrevLen=len;
+  m.gVel=(m.gVel||0)+(v-(m.gVel||0))*(1-Math.exp(-s*8));
+  const a=m.act||0, vol=Math.min(1.14,Math.max(.88,1/Math.sqrt(len)));
+  let tgt,rate,mode;
+  if(a<=(thr===undefined?.4:thr)){ mode="relax"; tgt=vol*(.86+.3*a); rate=4; }
+  else if(m.gVel<-.006){ mode="conc"; tgt=vol*(.86+.68*a); rate=6; }
+  else if(m.gVel>.006){ mode="ecc"; tgt=Math.pow(1/len,.9)*(.9+.2*a); rate=1.5; }
+  else { mode="iso"; tgt=vol*(.88+.62*a); rate=3; }
+  m.cmode=mode; tgt=Math.min(1.5,Math.max(.8,tgt));
+  const g0=m.girth||1; m.girth=g0+(tgt-g0)*(1-Math.exp(-s*rate));
+  return Math.abs(m.girth-g0)>.0015;
 }
 function elTick(dt){
   const E=realElbow; if(!E.on) return;
@@ -3671,10 +3691,9 @@ function elTick(dt){
     m.len=m.def.group==="flex"?1.1-0.25*p:0.93+0.17*p;
     m.mat.color.copy(EL_RELAX).lerp(EL_CONTRACT,Math.min(1,m.act*1.1));
   });
+  /* 굵기: 수축 종류(단축성·등척성·신장성·이완)에 따라 — contractGirth 참고 */
+  E.muscles.forEach(m=>{ if(contractGirth(m,s,.45)) changed=true; });
   if(changed){
-    /* 굵기: 길이가 줄면 부피 보존으로 굵어지고(1/√길이), 수축 활성도만큼 더 부푼다. 이완 시에는 가늘어진다 */
-    E.muscles.forEach(m=>{ const vol=Math.min(1.12,Math.max(.9,1/Math.sqrt(m.len)));
-      m.girth=Math.min(1.6,Math.max(.8,vol*(.84+.72*m.act))); });
     E.deform.forEach(d=>{ if(!d.muscle) return; const m=E.muscles.find(x=>x.o===d.o);
       d.lenK=1+(m.len-1)*0.8; d.girth=m.girth; });
     elApply(); E.drawn=E.angle;
@@ -3966,7 +3985,7 @@ function sqUpdatePanel(){
   squat.groups.forEach(g=>{
     if(!g.ui) return;
     const on=g.act>0.4, hex="#"+g.mats[0].color.clone().convertLinearToSRGB().getHexString();
-    g.ui.st.textContent=!on?"이완":dir>0?"단축성":dir<0?"신장성":"등척성";
+    g.ui.st.textContent=!on?"이완":CM_KO[g.cmode==="relax"||!g.cmode?"iso":g.cmode];
     g.ui.st.className="el-state "+(on?"c":"r");
     g.ui.bar.style.width=Math.round(g.act*100)+"%"; g.ui.bar.style.background=hex; g.ui.sw.style.background=hex;
     g.ui.gir.textContent=Math.round(g.girth*100)+"%"; g.ui.len.textContent=Math.round(g.len*100)+"%";
@@ -3997,8 +4016,7 @@ function sqTick(dt){
     const key=g.def.key, before=g.act;
     g.act+=(T0[key]-g.act)*k; if(Math.abs(g.act-before)>.002) changed=true;
     g.len=LEN[key];
-    const vol=Math.min(1.12,Math.max(.9,1/Math.sqrt(g.len)));
-    g.girth=Math.min(1.5,Math.max(.82,vol*(.84+.66*g.act)));
+    if(contractGirth(g,s)) changed=true;
     const col=EL_RELAX.clone().lerp(EL_CONTRACT,Math.min(1,g.act*1.1));
     g.mats.forEach(m=>m.color.copy(col));
   });
@@ -4367,7 +4385,7 @@ function bdUpdatePanel(){
   bdAllGroups().forEach(g=>{
     if(!g.ui) return;
     const on=g.act>0.4, hex="#"+g.mats[0].color.clone().convertLinearToSRGB().getHexString();
-    g.ui.st.textContent=!on?"이완":dir>0?"단축성":dir<0?"신장성":"등척성";
+    g.ui.st.textContent=!on?"이완":CM_KO[g.cmode==="relax"||!g.cmode?"iso":g.cmode];
     g.ui.st.className="el-state "+(on?"c":"r");
     g.ui.bar.style.width=Math.round(g.act*100)+"%"; g.ui.bar.style.background=hex; g.ui.sw.style.background=hex;
     g.ui.gir.textContent=Math.round(g.girth*100)+"%"; g.ui.len.textContent=Math.round(g.len*100)+"%";
@@ -4397,8 +4415,7 @@ function bdTick(dt){
     const key=g.def.key, before=g.act;
     g.act+=(A[key]-g.act)*k; if(Math.abs(g.act-before)>.002) changed=true;
     if(LEN[key]!==undefined) g.len=LEN[key];
-    const vol=Math.min(1.12,Math.max(.9,1/Math.sqrt(g.len)));
-    g.girth=Math.min(1.5,Math.max(.82,vol*(.84+.66*g.act)));
+    if(contractGirth(g,s)) changed=true;
     const col=EL_RELAX.clone().lerp(EL_CONTRACT,Math.min(1,g.act*1.1));
     g.mats.forEach(m=>m.color.copy(col));
   });
@@ -4760,7 +4777,7 @@ function puUpdatePanel(){
   pull.groups.forEach(g=>{
     if(!g.ui) return;
     const on=g.act>0.4, hex="#"+g.mats[0].color.clone().convertLinearToSRGB().getHexString();
-    g.ui.st.textContent=!on?"이완":dir>0?"단축성":dir<0?"신장성":"등척성";
+    g.ui.st.textContent=!on?"이완":CM_KO[g.cmode==="relax"||!g.cmode?"iso":g.cmode];
     g.ui.st.className="el-state "+(on?"c":"r");
     g.ui.bar.style.width=Math.round(g.act*100)+"%"; g.ui.bar.style.background=hex; g.ui.sw.style.background=hex;
     g.ui.gir.textContent=Math.round(g.girth*100)+"%"; g.ui.len.textContent=Math.round(g.len*100)+"%";
@@ -4788,8 +4805,7 @@ function puTick(dt){
   E.groups.forEach(g=>{
     const before=g.act; g.act+=(A[g.def.key]-g.act)*k; if(Math.abs(g.act-before)>.002) changed=true;
     g.len=puLen(g.def.key,E.ang);
-    const vol=Math.min(1.12,Math.max(.9,1/Math.sqrt(g.len)));
-    g.girth=Math.min(1.5,Math.max(.8,vol*(.84+.66*g.act)));
+    if(contractGirth(g,s)) changed=true;
     const col=EL_RELAX.clone().lerp(EL_CONTRACT,Math.min(1,g.act*1.1));
     g.mats.forEach(m=>m.color.copy(col));
   });
@@ -5608,7 +5624,7 @@ function exUpdatePanel(){
   document.getElementById("exSt").innerHTML=N.stab+"<small>관절·몸통을 고정해 자세를 버팀 (주로 등척성)</small>";
   document.getElementById("exAn").innerHTML=N.ant+"<small>반대 작용 근육 · 대부분 이완해 움직임을 허용</small>";
   ex.rows.forEach(rw=>{ const g=ex.groups[rw.k], on=g.act>0.4, hex=g.mats[0]?"#"+g.mats[0].color.clone().convertLinearToSRGB().getHexString():"#c0392b";
-    rw.ui.st.textContent=!on?"이완":(rw.r==="stab"||d.iso)?"등척성":conc?"단축성":ecc?"신장성":"등척성";
+    rw.ui.st.textContent=!on?"이완":(rw.r==="stab"||d.iso)?"등척성":CM_KO[g.cmode==="relax"||!g.cmode?"iso":g.cmode];
     rw.ui.st.className="el-state "+(on?"c":"r");
     rw.ui.bar.style.width=Math.round(g.act*100)+"%"; rw.ui.bar.style.background=hex; rw.ui.sw.style.background=hex;
     rw.ui.gir.textContent=Math.round(g.girth*100)+"%"; rw.ui.len.textContent=Math.round(g.len*100)+"%"; });
@@ -5629,11 +5645,11 @@ function exTick(dt){
   Object.values(E.groups).forEach(g=>{ if(!g.meshes.length) return; const before=g.act; g.act+=((tgt[g.def.key]||0.04)-g.act)*k; if(Math.abs(g.act-before)>.002) changed=true; });
   if(changed){ exApply(); E.drawn=E.p; }
   Object.values(E.groups).forEach(g=>{ if(!g.meshes.length) return;
-    const vol=Math.min(1.12,Math.max(.9,1/Math.sqrt(g.len||1)));
-    g.girth=Math.min(1.5,Math.max(.82,vol*(.84+.66*g.act)));
+    contractGirth(g,s);
+    const gR=Math.min(1.14,Math.max(.88,1/Math.sqrt(g.len||1)))*.86;   /* 힘이 빠진(이완) 굵기 */
     g.meshes.forEach(m=>{ const sideK=(d.side&&d.side[m.userData.side]!==undefined)?d.side[m.userData.side]:1, a=g.act*sideK;
       m.userData.mat0.color.copy(EX_RELAX).lerp(EX_CONTRACT,Math.min(1,a*1.1)); if(m.userData.dim) m.userData.dim.color.copy(m.userData.mat0.color);
-      if(m.morphTargetInfluences) m.morphTargetInfluences[0]=(Math.min(1.5,Math.max(.82,vol*(.84+.66*a))))-1; }); });
+      if(m.morphTargetInfluences) m.morphTargetInfluences[0]=(gR+(g.girth-gR)*Math.min(1,sideK))-1; }); });
   const now=performance.now(); if(now-E.lastUI>90){ exUpdatePanel(); E.lastUI=now; }
 }
 function startEx(id){
@@ -5660,7 +5676,7 @@ function startEx(id){
       ex.anchorTarget=d.anchor.fy===undefined?pr0.clone():new T.Vector3(0,ex.J.floor+d.anchor.fy,d.anchor.z!==undefined?d.anchor.z:(d.anchor.restZ?pr0.z:pp0.z));
       const F0=exFrame(d,0);
       const pr=exBuildProps(d,F0.M); ex.propG=pr.G; ex.propsDyn=pr.dyn; ex.root.add(pr.G);
-      Object.values(ex.groups).forEach(g=>{ g.act=0; g.len=1; });
+      Object.values(ex.groups).forEach(g=>{ g.act=0; g.len=1; g.girth=1; g.gPrevLen=null; g.gVel=0; });
       exResetL0(); exApply(); exBuildCard(); exUpdatePanel();
       document.getElementById("exHint").textContent=d.desc;
       const c=exPt(d.cam&&d.cam.at||"pelvis",exFrame(d,0.5).M).applyMatrix4(ex.root.matrixWorld);
