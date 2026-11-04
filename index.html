@@ -728,7 +728,7 @@ ol.parts .seen{flex:0 0 auto;font-size:11px;font-weight:700;color:#34D399;margin
         <div class="joint-hint" id="exHint"></div>
       </div>
       <div class="joint-panel" id="jointPanel" role="region" aria-label="팔꿈치 근육 시뮬레이터 조작">
-        <div class="joint-row"><b>팔꿈치 근육 시뮬레이터</b><span class="joint-angle" id="jointAngle">0°</span></div>
+        <div class="joint-row"><b>팔꿈치 근육 시뮬레이터 · 덤벨 컬</b><span class="joint-angle" id="jointAngle">0°</span></div>
         <input id="jointSlider" type="range" min="0" max="145" value="0" step="1" aria-label="팔꿈치 굽힘 각도 (0°는 완전히 편 상태, 145°는 완전히 굽힌 상태)">
         <div class="joint-ticks" aria-hidden="true"><span>0° 폄</span><span>90°</span><span>145° 굽힘</span></div>
         <div class="joint-btns">
@@ -739,7 +739,7 @@ ol.parts .seen{flex:0 0 auto;font-size:11px;font-weight:700;color:#34D399;margin
         <div class="joint-speed" id="jointSpeed" role="group" aria-label="재생 속도">
           <button data-s="0.5" aria-pressed="false">0.5×</button><button data-s="1" aria-pressed="true">1×</button><button data-s="2" aria-pressed="false">2×</button>
         </div>
-        <div class="joint-hint" id="jointHint">슬라이더를 움직이면 실제 상지 모델의 아래팔이 팔꿈치를 중심으로 굽혀지고 펴집니다.</div>
+        <div class="joint-hint" id="jointHint">덤벨을 든 채 슬라이더를 움직이면 실제 상지 모델의 아래팔이 팔꿈치를 중심으로 굽혀지고 펴집니다.</div>
       </div>
 <div class="joint-panel" id="squatPanel" role="region" aria-label="앉았다 일어서기 시뮬레이터 조작">
         <div class="joint-row"><b>앉았다 일어서기 시뮬레이터</b><span class="joint-angle" id="sqPct">0%</span></div>
@@ -813,7 +813,7 @@ ol.parts .seen{flex:0 0 auto;font-size:11px;font-weight:700;color:#34D399;margin
       </div>
     </section>
     <section class="card simcard" id="elbowcard" hidden aria-live="polite">
-      <div class="hd"><h2>팔꿈치 근육 시뮬레이터</h2><span class="cnt" id="elPhaseEn">FLEXION</span></div>
+      <div class="hd"><h2>팔꿈치 근육 시뮬레이터 · 덤벨 컬</h2><span class="cnt" id="elPhaseEn">CONCENTRIC</span></div>
       <div class="bd">
         <div class="el-head">
           <div><p class="el-eyebrow">현재 동작</p><p class="el-phase" id="elPhase" data-dir="0">정지</p></div>
@@ -827,7 +827,7 @@ ol.parts .seen{flex:0 0 auto;font-size:11px;font-weight:700;color:#34D399;margin
           <thead><tr><th>근육</th><th>상태</th><th>활성</th><th>굵기*</th><th>길이*</th></tr></thead>
           <tbody id="elRows"></tbody>
         </table>
-        <p class="el-note">* 굵기는 원래 모델 대비 근육 배(가운데 부분)의 두께, 길이는 중간 각도를 100%로 둔 근육-힘줄 길이로, 모두 모식 추정값입니다. 굵기는 수축 종류에 따라 다르게 변합니다. 단축성 수축은 짧아지는 만큼 근육 배가 볼록하게 두꺼워지고, 등척성 수축은 두꺼워진 상태가 유지되며, 신장성 수축은 힘을 내면서도 늘어나므로 두께가 서서히 얇아집니다. 길이 숫자는 현재 자세에서의 길이이고, ▼는 지금 짧아지는 중, ▲는 길어지는 중임을 뜻합니다. 예를 들어 깊이 굽힌 자세에서 펴기 시작하면 상완삼두근 (위팔세갈래근)은 아직 100%보다 길지만(▼) 수축하며 짧아지고 있습니다. 굵기·색 변화는 관절 각도와 움직임 방향에 맞춘 시각화이며 실측 생체역학 값이 아닙니다. 근육 이름을 누르면 아래쪽에 설명이 나타납니다.</p>
+        <p class="el-note">* 굵기는 원래 모델 대비 근육 배(가운데 부분)의 두께, 길이는 중간 각도를 100%로 둔 근육-힘줄 길이로, 모두 모식 추정값입니다. 굵기는 수축 종류에 따라 다르게 변합니다. 단축성 수축은 짧아지는 만큼 근육 배가 볼록하게 두꺼워지고, 등척성 수축은 두꺼워진 상태가 유지되며, 신장성 수축은 힘을 내면서도 늘어나므로 두께가 서서히 얇아집니다. 길이 숫자는 현재 자세에서의 길이이고, ▼는 지금 짧아지는 중, ▲는 길어지는 중임을 뜻합니다. 덤벨을 들고 있으므로 팔을 펼 때(덤벨 내리기) 펴는 힘은 중력이 내고, 상완이두근 (위팔두갈래근)·상완근 (위팔근)이 길어지면서 힘을 내(신장성) 덤벨이 천천히 내려가게 합니다. 이때 상완삼두근 (위팔세갈래근)은 거의 이완합니다. 팔을 아래로 곧게 내린 자세에서는 덤벨이 팔꿈치를 돌리는 힘이 거의 없어 굽힘근도 힘을 거의 쓰지 않습니다. 굵기·색 변화는 관절 각도와 움직임 방향에 맞춘 시각화이며 실측 생체역학 값이 아닙니다. 근육 이름을 누르면 아래쪽에 설명이 나타납니다.</p>
       </div>
     </section>
     <section class="card simcard" id="squatcard" hidden aria-live="polite">
@@ -3473,6 +3473,20 @@ function realElbowSetup(){
     if(mi<0&&hi<-B){ rigid.push({o:o,base:o.matrix.clone()}); return; } /* 아래팔·손에만 있는 구조 */
     deform.push(elMakeDeform(o,pts,sOf,B,mi>=0?EL_MUSCLES[mi]:null));
   });
+  /* 4) 손에 쥔 덤벨 — 손잡이는 굽힘 축과 나란히, 손바닥 앞쪽에. 아래팔과 함께 회전한다 */
+  if(!realElbow.db){
+    const gm=new T.MeshStandardMaterial({color:new T.Color("#3b3f45").convertSRGBToLinear(),roughness:.38,metalness:.6,envMapIntensity:.7});
+    const hm=new T.MeshStandardMaterial({color:new T.Color("#8d939b").convertSRGBToLinear(),roughness:.3,metalness:.8,envMapIntensity:.8});
+    const hd=new T.CylinderGeometry(.0135,.0135,.13,24), pl=new T.CylinderGeometry(.048,.048,.032,6), cap=new T.CylinderGeometry(.03,.03,.012,24);
+    const geoP=mergeGeos([xf(pl,[0,.081,0]),xf(pl,[0,-.081,0]),xf(cap,[0,.103,0]),xf(cap,[0,-.103,0])]);
+    realElbow.db=[new T.Mesh(hd,hm),new T.Mesh(geoP,gm)];
+  }
+  {
+    const grip=handC.clone().addScaledVector(ant,.016).addScaledVector(A,-.012);
+    const q=new T.Quaternion().setFromUnitVectors(new T.Vector3(0,1,0),K.clone().normalize());
+    realElbow.dbBase=new T.Matrix4().compose(grip,q,new T.Vector3(1,1,1));
+    realElbow.db.forEach(m=>{ m.matrixAutoUpdate=false; m.castShadow=true; m.userData.isRight=true; m.userData.dumbbell=true; });
+  }
   realElbow.root=root; realElbow.pivot=pivot; realElbow.axis=K; realElbow.armAxis=A;
   realElbow.rigid=rigid; realElbow.deform=deform;
   realElbow.muscles=EL_MUSCLES.map((d,i)=>{
@@ -3507,6 +3521,10 @@ function elMakeDeform(o,pts,sOf,B,muscle){
   return d;
 }
 function elSwap(on){
+  const E=realElbow;
+  if(E.db){ E.rigid=E.rigid.filter(r=>!r.o.userData.dumbbell);
+    E.db.forEach(m=>{ if(on){ E.root.add(m); m.matrix.copy(E.dbBase); E.rigid.push({o:m,base:E.dbBase.clone()}); }
+      else if(m.parent) m.parent.remove(m); }); }
   realElbow.deform.forEach(d=>{
     d.o.geometry=on?d.geo:d.geo0;
     d.o.matrix.copy(on?new T.Matrix4():d.base); d.o.matrixAutoUpdate=false;
@@ -3627,13 +3645,14 @@ function elUpdatePanel(){
   document.getElementById("elDegNote").textContent=a<5?"완전 폄":a>140?"완전 굽힘":a<90?"부분 굽힘":"깊은 굽힘";
   const ph=document.getElementById("elPhase"), en=document.getElementById("elPhaseEn");
   const ag=document.getElementById("elAgonist"), an=document.getElementById("elAntagonist");
-  if(dir>0){ ph.textContent="굽힘"; en.textContent="FLEXION";
-    ag.innerHTML=EL_FLEX+"<small>수축 · 길이가 줄어드는 중</small>"; an.innerHTML=EL_EXT+"<small>이완 · 길이가 늘어나는 중</small>"; }
-  else if(dir<0){ ph.textContent="폄"; en.textContent="EXTENSION";
-    ag.innerHTML=EL_EXT+"<small>수축 · 길이가 줄어드는 중</small>"; an.innerHTML=EL_FLEX+"<small>이완 · 길이가 늘어나는 중</small>"; }
-  else { ph.textContent="정지 · 자세 유지"; en.textContent="ISOMETRIC";
-    if(realElbow.hold>0){ ag.innerHTML=EL_FLEX+"<small>등척성 수축으로 각도 유지</small>"; an.innerHTML=EL_EXT+"<small>이완</small>"; }
-    else { ag.innerHTML=EL_EXT+"<small>폄 자세 유지</small>"; an.innerHTML=EL_FLEX+"<small>이완</small>"; } }
+  if(dir>0){ ph.textContent="덤벨 들어 올리기 (굽힘)"; en.textContent="CONCENTRIC";
+    ag.innerHTML=EL_FLEX+"<small>단축성 수축 · 짧아지고 두꺼워지며 덤벨을 들어 올림</small>"; an.innerHTML=EL_EXT+"<small>이완 · 길이가 늘어나는 중</small>"; }
+  else if(dir<0){ ph.textContent="덤벨 천천히 내리기 (폄)"; en.textContent="ECCENTRIC";
+    ag.innerHTML=EL_FLEX+"<small>신장성 수축 · 길어지면서도 힘을 내 덤벨이 천천히 내려가게 함 (펴는 힘은 중력) · 두께가 서서히 얇아짐</small>"; an.innerHTML=EL_EXT+"<small>거의 이완 · 길이가 줄어드는 중</small>"; }
+  else if(a>8){ ph.textContent="정지 · 덤벨 버티기"; en.textContent="ISOMETRIC";
+    ag.innerHTML=EL_FLEX+"<small>등척성 수축 · 길이 변화 없이 덤벨 무게를 버팀 · 두꺼운 상태 유지</small>"; an.innerHTML=EL_EXT+"<small>이완</small>"; }
+  else { ph.textContent="정지 · 팔을 내리고 덤벨 들기"; en.textContent="REST";
+    ag.innerHTML=EL_FLEX+"<small>거의 이완 · 덤벨이 팔꿈치를 돌리는 힘이 거의 없음</small>"; an.innerHTML=EL_EXT+"<small>이완</small>"; }
   ph.dataset.dir=dir;
   realElbow.muscles.forEach(m=>{
     if(!m.ui) return;
@@ -3679,10 +3698,13 @@ function elTick(dt){
   E.dir=E.velS>4?1:E.velS<-4?-1:0;
   E.hold=E.dir!==0?E.dir:(E.angle>15?1:-1);
   if(!E.ready) return;
-  /* 활성도 목표: 움직이는 방향의 근육이 주동근, 반대쪽이 길항근 */
-  const p=E.angle/ELBOW_MAX; let fT,eT;
-  if(E.dir>0){ fT=.55+.45*p; eT=.08; } else if(E.dir<0){ eT=.55+.45*(1-p); fT=.08+.12*p; }
-  else { fT=E.hold>0?.35+.35*p:.06; eT=E.hold<0?.3:.06; }
+  /* 활성도 목표 (덤벨 컬): 위팔이 수직이므로 덤벨 무게가 팔꿈치를 펴려는 힘은 sin(각도)에 비례(90°에서 최대).
+     올릴 때 굽힘근 단축성, 내릴 때 굽힘근 신장성(펴는 힘은 중력), 멈추면 굽힘근 등척성. 삼두근은 거의 이완 */
+  const p=E.angle/ELBOW_MAX, Lt=Math.sin(deg(Math.min(90,E.angle))); let fT,eT;
+  if(E.dir>0){ fT=.6+.38*Lt; eT=.07; }
+  else if(E.dir<0){ fT=.5+.3*Lt; eT=.05; }
+  else if(E.angle>8){ fT=.48+.36*Lt; eT=.07; }
+  else { fT=.16; eT=.05; }
   const k=1-Math.exp(-s*5); let changed=Math.abs(E.angle-E.drawn)>.05;
   E.muscles.forEach(m=>{
     const tgt=m.def.group==="flex"?fT:eT, before=m.act;
